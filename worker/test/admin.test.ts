@@ -95,4 +95,21 @@ describe('admin', () => {
     expect(log.map((l) => l.action)).toEqual(['sim_reset']);
     expect((await h.db.first<{ n: number }>('SELECT COUNT(*) n FROM request_counts'))!.n).toBeGreaterThan(0);
   });
+
+  test('restricted user acting as admin can unrestrict; delivery photo is viewable by a signer', async () => {
+    const { h, admin, adminId, signature } = await setup();
+    expect((await h.call('POST', `/api/admin/users/${adminId}/restrict`, { ...admin, body: { restricted: true } })).status).toBe(200);
+    expect((await h.call('POST', `/api/admin/users/${adminId}/restrict`, { ...admin, body: { restricted: false } })).status).toBe(200);
+
+    const id = await signature();
+    const u = await user(h, '서명자');
+    await h.call('POST', `/api/campaigns/${id}/participate`, { ...on(u, APPLY_DAY), body: { answers: {}, consents: { delivery: true } } });
+    const png = Buffer.from('89504e470d0a1a0a', 'hex').toString('base64');
+    expect((await h.call('POST', `/api/campaigns/${id}/delivery`, { ...admin, body: { summary: '전달', councils: [], photoBase64: png, photoMime: 'image/png' } })).status).toBe(201);
+    const d = await (await h.call('GET', `/api/campaigns/${id}/delivery`, as(u))).json();
+    expect(d.delivery.photoFileId).toBeTruthy();
+    const f = await h.call('GET', `/api/files/${d.delivery.photoFileId}`, as(u));
+    expect(f.status).toBe(200);
+    expect((await h.call('GET', `/api/files/${d.delivery.photoFileId}`, as(await user(h, '구경꾼')))).status).toBe(200);
+  });
 });

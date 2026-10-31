@@ -250,11 +250,11 @@ export const memberAction: Handler = async (req, ctx, p) => {
   if (action === 'approve') {
     if (targetRole !== 'pending') return fail(409, 'NOT_PENDING', '승인 대기 중이 아니에요');
     await set('member');
-    await notify(ctx.db, p.uid, 'join_approved', `「${s.g.name}」 가입이 승인됐어요`, link, `join_approved:${p.id}:${p.uid}:${nanoid(6)}`, ctx.simDate);
+    await notify(ctx.db, p.uid, 'join_approved', `「${s.g.name}」 가입이 승인됐어요`, link, `join_approved:${p.id}:${p.uid}`, ctx.simDate);
   } else if (action === 'staff') {
     if (targetRole !== 'member') return fail(409, 'NOT_MEMBER', '멤버만 운영진으로 지정할 수 있어요');
     await set('staff');
-    await notify(ctx.db, p.uid, 'staff_appointed', `「${s.g.name}」 운영진으로 지정됐어요`, link, `staff_appointed:${p.id}:${p.uid}:${nanoid(6)}`, ctx.simDate);
+    await notify(ctx.db, p.uid, 'staff_appointed', `「${s.g.name}」 운영진으로 지정됐어요`, link, `staff_appointed:${p.id}:${p.uid}`, ctx.simDate);
   } else if (action === 'unstaff') {
     if (targetRole !== 'staff') return fail(409, 'NOT_STAFF_TARGET', '운영진이 아니에요');
     await set('member');

@@ -203,7 +203,7 @@ async function route(req: Request, env: Env, db: Db): Promise<Response> {
 
   ctx.simPasscode = env.SIM_PASSCODE;
   // 이용 제한: restricted members can read but not write.
-  if (ctx.userId && req.method !== 'GET' && req.method !== 'HEAD' && url.pathname !== '/api/sim/reset') {
+  if (ctx.userId && ctx.role !== 'admin' && req.method !== 'GET' && req.method !== 'HEAD' && url.pathname !== '/api/sim/reset') {
     const u = await db.first<{ restricted: number }>('SELECT restricted FROM users WHERE id = ?', ctx.userId);
     if (u?.restricted) return fail(403, 'RESTRICTED', '이용이 제한된 계정이에요');
   }
