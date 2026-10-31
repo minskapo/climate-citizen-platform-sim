@@ -1,0 +1,13 @@
+ALTER TABLE missions ADD COLUMN round INTEGER;
+ALTER TABLE missions ADD COLUMN date TEXT;
+ALTER TABLE missions ADD COLUMN category TEXT NOT NULL DEFAULT '';
+ALTER TABLE mission_bundles ADD COLUMN data_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE mission_bundles ADD COLUMN owner_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE mission_bundles ADD COLUMN created_by TEXT;
+ALTER TABLE checklist_items ADD COLUMN link_type TEXT NOT NULL DEFAULT 'url';
+ALTER TABLE checklist_items ADD COLUMN target TEXT NOT NULL DEFAULT '';
+ALTER TABLE campaign_tools ADD COLUMN exclusive INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX idx_campaign_files_campaign ON campaign_files (campaign_id);
+CREATE INDEX idx_campaign_files_file ON campaign_files (file_id);
+CREATE INDEX idx_campaign_tools_campaign ON campaign_tools (campaign_id);
+CREATE INDEX idx_checklist_campaign ON checklist_items (campaign_id);

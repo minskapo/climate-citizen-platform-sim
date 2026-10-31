@@ -94,6 +94,8 @@ export const listPosts: Handler = async (req, ctx, p) => {
   const sp = new URL(req.url).searchParams;
   const where = ['board_type = ?', 'board_id = ?'];
   const args: unknown[] = [b.type, b.id];
+  // 서명 설명 글 lives on the campaign board but is shown in the campaign detail, not the board.
+  if (b.type === 'campaign') where.push("category <> 'explainer'");
   if (!b.staff) {
     where.push('(hidden = 0 OR author_id = ?)');
     args.push(ctx.userId ?? '');
@@ -112,7 +114,7 @@ export const listPosts: Handler = async (req, ctx, p) => {
   return json({ items, nextCursor: rows.length > PAGE_SIZE ? String(offset + PAGE_SIZE) : null });
 };
 
-function decodeBase64(s: string): Uint8Array | null {
+export function decodeBase64(s: string): Uint8Array | null {
   try {
     const bin = atob(s);
     const out = new Uint8Array(bin.length);

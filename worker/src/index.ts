@@ -6,6 +6,10 @@ import { enter } from './routes/sim';
 import { acceptTransfer, closeGroup, createGroup, createInvite, getGroupRoute, joinGroup, leaveGroup, listGroups, memberAction, patchGroup, transferGroup } from './routes/groups';
 import { addComment, createPost, deletePost, getPost, hidePost, likePost, listPosts, patchPost, pinPost, popular, unhidePost, unpinPost } from './routes/posts';
 import { getFile } from './routes/files';
+import {
+  addCampaignFile, cloneCampaign, createBundle, createCampaign, deleteCampaignFile, getCampaign, importBundle, listBundles, listCampaigns,
+  patchCampaignFile, publishCampaign, putCampaignTools, putChecklist, putExplainer, putMissions, updateCampaign,
+} from './routes/campaigns';
 import { createReport } from './routes/reports';
 import { createUser, getMe, listUsers, patchMe } from './routes/users';
 
@@ -48,6 +52,22 @@ export const routes: Route[] = [
   { method: 'GET', pattern: '/api/popular', handler: popular },
   { method: 'GET', pattern: '/api/files/:id', handler: getFile },
   { method: 'POST', pattern: '/api/reports', handler: createReport },
+  { method: 'GET', pattern: '/api/campaigns', handler: listCampaigns },
+  { method: 'POST', pattern: '/api/campaigns', handler: createCampaign },
+  { method: 'GET', pattern: '/api/campaigns/:id', handler: getCampaign },
+  { method: 'PUT', pattern: '/api/campaigns/:id', handler: updateCampaign },
+  { method: 'POST', pattern: '/api/campaigns/:id/publish', handler: publishCampaign },
+  { method: 'POST', pattern: '/api/campaigns/:id/clone', handler: cloneCampaign },
+  { method: 'PUT', pattern: '/api/campaigns/:id/missions', handler: putMissions },
+  { method: 'POST', pattern: '/api/campaigns/:id/missions/from-bundle/:bundleId', handler: importBundle },
+  { method: 'PUT', pattern: '/api/campaigns/:id/checklist', handler: putChecklist },
+  { method: 'POST', pattern: '/api/campaigns/:id/files', handler: addCampaignFile },
+  { method: 'PATCH', pattern: '/api/campaigns/:id/files/:fileId', handler: patchCampaignFile },
+  { method: 'DELETE', pattern: '/api/campaigns/:id/files/:fileId', handler: deleteCampaignFile },
+  { method: 'PUT', pattern: '/api/campaigns/:id/tools', handler: putCampaignTools },
+  { method: 'PUT', pattern: '/api/campaigns/:id/explainer', handler: putExplainer },
+  { method: 'GET', pattern: '/api/mission-bundles', handler: listBundles },
+  { method: 'POST', pattern: '/api/mission-bundles', handler: createBundle },
 ];
 
 function match(pattern: string, path: string): Record<string, string> | null {
