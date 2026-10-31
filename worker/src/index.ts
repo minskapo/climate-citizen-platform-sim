@@ -11,6 +11,12 @@ import {
   patchCampaignFile, publishCampaign, putCampaignTools, putChecklist, putExplainer, putMissions, updateCampaign,
 } from './routes/campaigns';
 import { createReport } from './routes/reports';
+import { listNotifications, readNotifications, syncNotifications } from './routes/notifications';
+import { createCollab, draftFromCollab, listCollab, replyCollab } from './routes/collab';
+import { getDelivery, postDelivery, postDeliveryAnswer } from './routes/deliveries';
+import { addVersion, createTool, getPublished, listTools, myToolRecords, publishToolVersion, rollbackTool, saveToolRecord } from './routes/tools';
+import { adminCloseGroup, adminExport, adminGroups, adminHome, adminParticipants, adminReports, adminUsers, resolveReport, restrictUser, sendNotice } from './routes/admin';
+import { simExport, simReset } from './routes/simData';
 import { createUser, getMe, listUsers, patchMe } from './routes/users';
 import {
   cancelParticipation, checklistDone, getParticipation, participate, pauseParticipation, putReminder, quitParticipation,
@@ -97,6 +103,36 @@ export const routes: Route[] = [
   { method: 'GET', pattern: '/api/aggregates/calculator', handler: calculatorAggregate },
   { method: 'GET', pattern: '/api/aggregates/signature/:id', handler: signatureAggregate },
   { method: 'GET', pattern: '/api/aggregates/tool/:toolId/:key', handler: toolAggregate },
+  { method: 'GET', pattern: '/api/notifications', handler: listNotifications },
+  { method: 'POST', pattern: '/api/notifications/read', handler: readNotifications },
+  { method: 'POST', pattern: '/api/notifications/sync', handler: syncNotifications },
+  { method: 'POST', pattern: '/api/campaigns/:id/notices', handler: sendNotice },
+  { method: 'GET', pattern: '/api/campaigns/:id/delivery', handler: getDelivery },
+  { method: 'POST', pattern: '/api/campaigns/:id/delivery', handler: postDelivery },
+  { method: 'POST', pattern: '/api/campaigns/:id/delivery/answers', handler: postDeliveryAnswer },
+  { method: 'POST', pattern: '/api/collab', handler: createCollab },
+  { method: 'GET', pattern: '/api/admin/collab', handler: listCollab },
+  { method: 'POST', pattern: '/api/admin/collab/:id/reply', handler: replyCollab },
+  { method: 'POST', pattern: '/api/admin/collab/:id/draft', handler: draftFromCollab },
+  { method: 'POST', pattern: '/api/tools', handler: createTool },
+  { method: 'GET', pattern: '/api/tools', handler: listTools },
+  { method: 'POST', pattern: '/api/tools/:id/versions', handler: addVersion },
+  { method: 'POST', pattern: '/api/tools/:id/versions/:v/publish', handler: publishToolVersion },
+  { method: 'POST', pattern: '/api/tools/:id/rollback', handler: rollbackTool },
+  { method: 'GET', pattern: '/api/tools/:id/published', handler: getPublished },
+  { method: 'POST', pattern: '/api/tools/:id/records', handler: saveToolRecord },
+  { method: 'GET', pattern: '/api/tools/:id/records/mine', handler: myToolRecords },
+  { method: 'GET', pattern: '/api/admin/home', handler: adminHome },
+  { method: 'GET', pattern: '/api/admin/campaigns/:id/participants', handler: adminParticipants },
+  { method: 'GET', pattern: '/api/admin/campaigns/:id/export', handler: adminExport },
+  { method: 'GET', pattern: '/api/admin/reports', handler: adminReports },
+  { method: 'POST', pattern: '/api/admin/reports/:id', handler: resolveReport },
+  { method: 'GET', pattern: '/api/admin/groups', handler: adminGroups },
+  { method: 'POST', pattern: '/api/admin/groups/:id/close', handler: adminCloseGroup },
+  { method: 'GET', pattern: '/api/admin/users', handler: adminUsers },
+  { method: 'POST', pattern: '/api/admin/users/:id/restrict', handler: restrictUser },
+  { method: 'GET', pattern: '/api/sim/export', handler: simExport },
+  { method: 'POST', pattern: '/api/sim/reset', handler: simReset },
 ];
 
 function match(pattern: string, path: string): Record<string, string> | null {
@@ -121,7 +157,7 @@ function withCors(res: Response, origin: string | null): Response {
 }
 
 const CORS_HEADERS =
-  'content-type, x-sim-token, x-user-id, x-role, x-sim-date, x-sim-time, x-staff-group';
+  'content-type, x-sim-token, x-user-id, x-role, x-sim-date, x-sim-time, x-staff-group, x-preview';
 
 export async function handle(req: Request, env: Env, db: Db): Promise<Response> {
   const origin = req.headers.get('origin');
@@ -164,6 +200,13 @@ async function route(req: Request, env: Env, db: Db): Promise<Response> {
 
   const ctx = buildCtx(req, db, env.TOKEN_SECRET);
   if (ctx instanceof Response) return ctx;
+
+  ctx.simPasscode = env.SIM_PASSCODE;
+  // 이용 제한: restricted members can read but not write.
+  if (ctx.userId && req.method !== 'GET' && req.method !== 'HEAD' && url.pathname !== '/api/sim/reset') {
+    const u = await db.first<{ restricted: number }>('SELECT restricted FROM users WHERE id = ?', ctx.userId);
+    if (u?.restricted) return fail(403, 'RESTRICTED', '이용이 제한된 계정이에요');
+  }
 
   let pathMatched = false;
   for (const r of routes) {

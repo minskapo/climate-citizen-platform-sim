@@ -1,0 +1,17 @@
+ALTER TABLE tools ADD COLUMN slug TEXT;
+ALTER TABLE tools ADD COLUMN kind TEXT NOT NULL DEFAULT 'block';
+CREATE UNIQUE INDEX idx_tools_slug ON tools (slug);
+ALTER TABLE tool_versions ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+CREATE INDEX idx_tool_versions_tool ON tool_versions (tool_id, version);
+ALTER TABLE tool_records ADD COLUMN preview INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN restricted INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE collab_proposals ADD COLUMN title TEXT NOT NULL DEFAULT '';
+ALTER TABLE collab_proposals ADD COLUMN period TEXT NOT NULL DEFAULT '';
+ALTER TABLE collab_proposals ADD COLUMN size TEXT NOT NULL DEFAULT '';
+ALTER TABLE collab_proposals ADD COLUMN author_id TEXT;
+ALTER TABLE deliveries ADD COLUMN photo_file_id TEXT;
+ALTER TABLE delivery_answers ADD COLUMN council TEXT NOT NULL DEFAULT '';
+ALTER TABLE delivery_answers ADD COLUMN answered_on TEXT;
+CREATE UNIQUE INDEX idx_deliveries_campaign ON deliveries (campaign_id);
+CREATE INDEX idx_collab_status ON collab_proposals (status);
+CREATE INDEX idx_reports_status ON reports (status);

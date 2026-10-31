@@ -31,3 +31,8 @@ export function requireUser(ctx: Ctx): string | Response {
 }
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Returns a 403 Response unless the caller is the simulated admin. */
+export function requireAdmin(ctx: Ctx): Response | null {
+  return ctx.role === 'admin' ? null : fail(403, 'ADMIN_ONLY', '관리자만 할 수 있어요');
+}

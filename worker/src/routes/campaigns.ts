@@ -10,6 +10,7 @@ import {
 } from '../campaignSettings';
 import { fail, json, type Ctx, type Handler } from '../db';
 import { getGroup, isStaffRole, memberRole } from './groups';
+import { promoteWaitlist } from './participations';
 import { decodeBase64 } from './posts';
 import { page, PAGE_SIZE, parseCursor, readBody, requireUser, str } from './common';
 
@@ -398,7 +399,10 @@ export const updateCampaign: Handler = async (req, ctx, p) => {
     if (bad) return bad;
   }
   await writeDraft(ctx, r.id, d);
-  return json(await detail(ctx, (await loadCampaign(ctx, r.id))!));
+  const after = (await loadCampaign(ctx, r.id))!;
+  // Raised capacity (or waitlist rules changed) can free seats for waitlisted applicants.
+  if (after.type === 'offline') await promoteWaitlist(ctx, after);
+  return json(await detail(ctx, after));
 };
 
 export const publishCampaign: Handler = async (req, ctx, p) => {

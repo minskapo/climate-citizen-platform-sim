@@ -53,13 +53,13 @@ export const toolAggregate: Handler = async (req, ctx, params) => {
   if (!tool) return fail(404, 'TOOL_NOT_FOUND', '웹 도구를 찾을 수 없어요');
   const v = await ctx.db.first<{ manifest_json: string }>(
     "SELECT manifest_json FROM tool_versions WHERE tool_id = ? AND status = 'published' ORDER BY created_at DESC LIMIT 1", params.toolId);
-  const declared = v ? (JSON.parse(v.manifest_json || '{}') as { aggregates?: unknown }).aggregates : undefined;
-  if (Array.isArray(declared) && !declared.includes(params.key)) return fail(404, 'AGGREGATE_NOT_FOUND', '이 도구가 공개하지 않은 집계 값이에요');
+  const declared = v ? (JSON.parse(v.manifest_json || '{}') as { aggregateKeys?: Array<{ key: string }> }).aggregateKeys : undefined;
+  if (Array.isArray(declared) && !declared.some((a) => a.key === params.key)) return fail(404, 'AGGREGATE_NOT_FOUND', '이 도구가 공개하지 않은 집계 값이에요');
   if (!/^[A-Za-z0-9_]{1,40}$/.test(params.key)) return fail(400, 'BAD_KEY', '집계 값 이름이 올바르지 않아요');
   const campaignId = new URL(req.url).searchParams.get('campaignId');
   const r = await ctx.db.first<{ n: number; people: number; sum: number | null; avg: number | null }>(
     `SELECT COUNT(*) n, COUNT(DISTINCT user_id) people, SUM(val) sum, AVG(val) avg FROM (
-       SELECT user_id, json_extract(data_json, '$.' || ?) val FROM tool_records WHERE tool_id = ? ${campaignId ? 'AND campaign_id = ?' : ''}
+       SELECT user_id, json_extract(data_json, '$.' || ?) val FROM tool_records WHERE tool_id = ? AND preview = 0 ${campaignId ? 'AND campaign_id = ?' : ''}
      ) WHERE typeof(val) IN ('integer', 'real')`,
     params.key, params.toolId, ...(campaignId ? [campaignId] : []),
   );

@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import { addDays } from '@shared/date';
 import { checkFileSize } from '@shared/validate';
 import { fail, json, type Ctx, type Handler } from '../db';
+import { notify } from '../notify';
 import { closedGone, getGroup, isMemberRole, isStaffRole, memberRole, type GroupRow } from './groups';
 import { likeEscape, page, PAGE_SIZE, parseCursor, readBody, requireUser, str } from './common';
 
@@ -293,6 +294,9 @@ export const addComment: Handler = async (req, ctx, p) => {
   if (!text || text.length > 1000) return fail(400, 'BAD_BODY', '댓글은 1~1000자로 써 주세요');
   const id = nanoid();
   await ctx.db.run('INSERT INTO comments (id, created_at, post_id, author_id, body, sim_date) VALUES (?,?,?,?,?,?)', id, ctx.now, p.id, uid, text, ctx.simDate);
+  if (r.post.author_id !== uid) {
+    await notify(ctx.db, r.post.author_id, 'comment', `「${r.post.title}」 글에 댓글이 달렸어요`, `/posts/${r.post.id}`, `comment:${id}`, ctx.simDate);
+  }
   return json({ id, postId: p.id, authorId: uid, body: text, createdAt: ctx.now }, 201);
 };
 

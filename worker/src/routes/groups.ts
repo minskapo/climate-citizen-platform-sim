@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { campaignStatus } from '@shared/campaignStatus';
 import type { Schedule } from '@shared/types';
+import { notify } from '../notify';
 import { fail, json, type Ctx, type Handler } from '../db';
 import { DAY_MS, likeEscape, page, PAGE_SIZE, parseCursor, readBody, requireUser, str } from './common';
 
@@ -98,7 +99,7 @@ export const createGroup: Handler = async (req, ctx) => {
   return json(await groupView(ctx, (await getGroup(ctx, id))!), 201);
 };
 
-async function campaignBadge(ctx: Ctx, groupId: string, forClose = false): Promise<{ id: string; title: string; status: string } | null> {
+export async function campaignBadge(ctx: Ctx, groupId: string, forClose = false): Promise<{ id: string; title: string; status: string } | null> {
   const rows = await ctx.db.all<{ id: string; title: string; type: string; publish: string; show_upcoming: number; schedule_json: string }>(
     "SELECT id, title, type, publish, show_upcoming, schedule_json FROM campaigns WHERE host_group_id = ? AND publish <> 'draft'",
     groupId,
@@ -245,12 +246,15 @@ export const memberAction: Handler = async (req, ctx, p) => {
     return fail(403, 'OWNER_ONLY', '모임장만 할 수 있어요');
   }
   const set = (role: string) => ctx.db.run('UPDATE group_members SET role = ? WHERE group_id = ? AND user_id = ?', role, p.id, p.uid);
+  const link = `/groups/${p.id}`;
   if (action === 'approve') {
     if (targetRole !== 'pending') return fail(409, 'NOT_PENDING', '승인 대기 중이 아니에요');
     await set('member');
+    await notify(ctx.db, p.uid, 'join_approved', `「${s.g.name}」 가입이 승인됐어요`, link, `join_approved:${p.id}:${p.uid}:${nanoid(6)}`, ctx.simDate);
   } else if (action === 'staff') {
     if (targetRole !== 'member') return fail(409, 'NOT_MEMBER', '멤버만 운영진으로 지정할 수 있어요');
     await set('staff');
+    await notify(ctx.db, p.uid, 'staff_appointed', `「${s.g.name}」 운영진으로 지정됐어요`, link, `staff_appointed:${p.id}:${p.uid}:${nanoid(6)}`, ctx.simDate);
   } else if (action === 'unstaff') {
     if (targetRole !== 'staff') return fail(409, 'NOT_STAFF_TARGET', '운영진이 아니에요');
     await set('member');
@@ -281,6 +285,7 @@ export const transferGroup: Handler = async (req, ctx, p) => {
   if ((await memberRole(ctx, p.id, to)) !== 'staff') return fail(400, 'TARGET_NOT_STAFF', '운영진 중에서 골라 주세요');
   const expires = new Date(Date.parse(ctx.now) + 7 * DAY_MS).toISOString();
   await ctx.db.run('UPDATE groups SET transfer_to = ?, transfer_expires = ? WHERE id = ?', to, expires, p.id);
+  await notify(ctx.db, to, 'transfer_request', `「${g.name}」 모임장을 넘겨받아 달라는 요청이 왔어요`, `/groups/${g.id}`, `transfer_request:${g.id}:${to}:${expires}`, ctx.simDate);
   return json({ toUserId: to, expiresAt: expires }, 201);
 };
 

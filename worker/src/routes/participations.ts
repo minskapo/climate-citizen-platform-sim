@@ -198,12 +198,26 @@ export const participate: Handler = async (req, ctx, params) => {
   if (!inserted) return fail(409, 'FULL', '자리가 모두 찼어요');
 
   const p = await reload(ctx, id);
+  if (c.type === 'signature') await goalAlerts(ctx, c, settings as SignatureSettings);
   if (p.state !== 'waitlisted') {
     const hostJoin = (settings as SignatureSettings).hostJoin;
     if (c.type !== 'signature' || hostJoin === 'auto' || (hostJoin === 'ask' && body.joinHost === true)) await joinHost(ctx, c, uid);
   }
   return json({ participation: await viewWithNo(ctx, p), waitlisted: p.state === 'waitlisted' }, 201);
 };
+
+/** 목표 인원 50% · 100% 도달 알림: the signature that crosses a threshold tells every signer (once per campaign + threshold). */
+async function goalAlerts(ctx: Ctx, c: CampaignRow, s: SignatureSettings) {
+  if (!s.goalAlerts || !s.goal) return;
+  const n = (await ctx.db.first<{ n: number }>("SELECT COUNT(*) n FROM participations WHERE campaign_id = ? AND state = 'signed'", c.id))?.n ?? 0;
+  for (const pct of [50, 100]) {
+    const need = Math.ceil((s.goal * pct) / 100);
+    if (n < need || n - 1 >= need) continue;
+    const signers = await ctx.db.all<{ user_id: string }>("SELECT user_id FROM participations WHERE campaign_id = ? AND state = 'signed'", c.id);
+    const text = pct === 100 ? `「${c.title}」 서명이 목표 인원에 닿았어요` : `「${c.title}」 서명이 목표의 절반을 넘었어요`;
+    for (const u of signers) await notify(ctx.db, u.user_id, 'goal_reached', text, `/campaigns/${c.id}`, `goal${pct}:${c.id}:${u.user_id}`, ctx.simDate);
+  }
+}
 
 function parseReminder(v: unknown, defaultTime: string): Record<string, unknown> | Response {
   if (!isObj(v) || typeof v.enabled !== 'boolean') return fail(400, 'BAD_REMINDER', '미션 알림 설정이 올바르지 않아요');
@@ -237,8 +251,8 @@ export const putReminder: Handler = async (req, ctx, params) => {
 // ---- cancel / pause / quit ---------------------------------------------------
 
 /** Promotes waitlisted applicants in order while seats allow; each UPDATE re-checks capacity atomically. */
-async function promoteWaitlist(ctx: Ctx, c: CampaignRow) {
-  const capacity = (settingsOf(c) as OfflineSettings).capacity;
+export async function promoteWaitlist(ctx: Ctx, c: CampaignRow) {
+  const capacity = (settingsOf(c) as OfflineSettings).capacity ?? 1_000_000;
   for (let i = 0; i < 1000; i++) {
     const row = await ctx.db.first<{ id: string; user_id: string }>(
       `UPDATE participations SET state = 'applied', waitlist_no = NULL, updated_sim_date = ?

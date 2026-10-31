@@ -17,6 +17,8 @@ export interface Ctx {
   now: string;
   /** HMAC secret (TOKEN_SECRET) for server-derived codes such as attendance. */
   secret: string;
+  /** Entry passcode (env SIM_PASSCODE) for re-confirming destructive admin actions. */
+  simPasscode?: string;
 }
 
 export type Handler = (req: Request, ctx: Ctx, params: Record<string, string>) => Promise<Response>;
