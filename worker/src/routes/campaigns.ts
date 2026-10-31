@@ -321,8 +321,8 @@ async function validatePublish(ctx: Ctx, id: string, d: Draft): Promise<Response
 
 const writeDraft = (ctx: Ctx, id: string, d: Draft): Promise<unknown> =>
   ctx.db.run(
-    'UPDATE campaigns SET type = ?, title = ?, summary = ?, image_file_id = ?, host_group_id = ?, schedule_json = ?, settings_json = ? WHERE id = ?',
-    d.type, d.title, d.summary, d.image_file_id, d.host_group_id, JSON.stringify(d.schedule), JSON.stringify(d.settings), id,
+    'UPDATE campaigns SET type = ?, title = ?, summary = ?, image_file_id = ?, host_group_id = ?, schedule_json = ?, settings_json = ?, hero = ? WHERE id = ?',
+    d.type, d.title, d.summary, d.image_file_id, d.host_group_id, JSON.stringify(d.schedule), JSON.stringify(d.settings), d.settings.heroEnabled ? 1 : 0, id,
   );
 
 async function insertCampaign(ctx: Ctx, d: Draft): Promise<string> {
@@ -372,8 +372,6 @@ export const updateCampaign: Handler = async (req, ctx, p) => {
   return json(await detail(ctx, (await loadCampaign(ctx, r.id))!));
 };
 
-const HERO_OFF = "UPDATE campaigns SET hero = 0, settings_json = json_set(settings_json, '$.heroEnabled', json('false')) WHERE hero = 1 AND id <> ?";
-
 export const publishCampaign: Handler = async (req, ctx, p) => {
   const r = await loadForAdmin(ctx, p.id);
   if (r instanceof Response) return r;
@@ -385,17 +383,18 @@ export const publishCampaign: Handler = async (req, ctx, p) => {
   const d = draftOf(r);
   const showUpcoming = body.showUpcoming ?? !!r.show_upcoming;
   if (mode === 'draft') {
-    await ctx.db.run("UPDATE campaigns SET publish = 'draft', show_upcoming = ?, hero = 0 WHERE id = ?", showUpcoming ? 1 : 0, r.id);
+    await ctx.db.run(
+      "UPDATE campaigns SET publish = 'draft', show_upcoming = ?, hero = 0, settings_json = json_set(settings_json, '$.heroEnabled', json('false')) WHERE id = ?",
+      showUpcoming ? 1 : 0, r.id,
+    );
     return json(await detail(ctx, (await loadCampaign(ctx, r.id))!));
   }
   const bad = await validatePublish(ctx, r.id, d);
   if (bad) return bad;
   const hero = (body.hero as boolean | undefined) ?? d.settings.heroEnabled;
   const settings = { ...d.settings, heroEnabled: hero };
-  await ctx.db.batch([
-    ...(hero ? [[HERO_OFF, [r.id]] as [string, unknown[]]] : []),
-    ['UPDATE campaigns SET publish = ?, show_upcoming = ?, hero = ?, settings_json = ? WHERE id = ?', [mode, showUpcoming ? 1 : 0, hero ? 1 : 0, JSON.stringify(settings), r.id]],
-  ]);
+  // Several campaigns may carry hero=1; which one shows is resolved per viewer date (heroFor).
+  await ctx.db.run('UPDATE campaigns SET publish = ?, show_upcoming = ?, hero = ?, settings_json = ? WHERE id = ?', mode, showUpcoming ? 1 : 0, hero ? 1 : 0, JSON.stringify(settings), r.id);
   return json(await detail(ctx, (await loadCampaign(ctx, r.id))!));
 };
 
@@ -438,10 +437,11 @@ export const cloneCampaign: Handler = async (req, ctx, p) => {
     [id, ctx.now, src.type, title, src.summary, src.image_file_id, inc.host ? src.host_group_id : null, JSON.stringify(emptySchedule()), JSON.stringify(settings), ctx.userId, ctx.simDate],
   ]);
   if (inc.missions) {
+    // The schedule is cleared, so absolute dates of dated missions are cleared too (admin re-sets them).
     const ms = await ctx.db.all<MissionRow & { cycle: string; settings_json: string }>('SELECT * FROM missions WHERE campaign_id = ?', src.id);
     for (const m of ms) {
       stmts.push(['INSERT INTO missions (id, created_at, campaign_id, title, description, cycle, fields_json, position, settings_json, round, date, category, sim_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        [nanoid(), ctx.now, id, m.title, m.description, m.cycle, m.fields_json, m.position, m.settings_json, m.round, m.date, m.category, ctx.simDate]]);
+        [nanoid(), ctx.now, id, m.title, m.description, m.cycle, m.fields_json, m.position, m.settings_json, m.round, null, m.category, ctx.simDate]]);
     }
   }
   if (inc.checklist) {
@@ -764,10 +764,11 @@ export const listCampaigns: Handler = async (req, ctx) => {
     .filter(({ settings }) => !mode || settings.mode === mode)
     .filter(({ g }) => !region || (g?.sido || '전국·온라인') === region)
     .filter(({ r, g }) => !q || r.title.toLowerCase().includes(q) || r.summary.toLowerCase().includes(q) || (g?.name ?? IGT_NAME).toLowerCase().includes(q))
-    .filter(({ r }) => !hero || !!r.hero);
+    .filter(({ r, st }) => !hero || heroQualifies(ctx, r, st));
   const counts = { all: base.length, scheduled: 0, recruiting: 0, running: 0, closed: 0, draft: 0 };
   for (const b of base) counts[b.st]++;
   let list = status ? base.filter((b) => b.st === status) : base;
+  if (hero) list = list.sort((a, b) => heroKey(b.r).localeCompare(heroKey(a.r))).slice(0, 1);
   if (sp.get('sort') === 'deadline') {
     list = [...list].sort((a, b) => STATUS_RANK[a.st] - STATUS_RANK[b.st] || deadlineOf(a.r, a.st).localeCompare(deadlineOf(b.r, b.st)));
   }
@@ -786,6 +787,28 @@ export const listCampaigns: Handler = async (req, ctx) => {
     ...(isAdmin(ctx) ? { publish: r.publish, showUpcoming: !!r.show_upcoming } : {}),
   }));
   return json({ ...page(items, offset), counts });
+};
+
+// ---- home hero --------------------------------------------------------------
+
+const heroKey = (r: CampaignRow) => {
+  const s = scheduleOf(r);
+  return `${s.recruitStart ?? ''}T${s.recruitStartTime ?? '00:00'}|${r.created_at}`;
+};
+
+/** hero=1, visible, not draft/closed, and recruiting has started by the viewer's date + time. */
+function heroQualifies(ctx: Ctx, r: CampaignRow, st: CampaignStatus): boolean {
+  if (!r.hero || st === 'draft' || st === 'closed' || !visibleTo(ctx, r, st)) return false;
+  const s = scheduleOf(r);
+  if (!s.recruitStart) return false;
+  return `${s.recruitStart}T${s.recruitStartTime ?? '00:00'}` <= `${ctx.simDate}T${ctx.simTime}`;
+}
+
+/** Home hero for this viewer: the qualifying hero campaign with the latest recruit start (or null). */
+export const getHero: Handler = async (_req, ctx) => {
+  const rows = await ctx.db.all<CampaignRow>("SELECT * FROM campaigns WHERE hero = 1 AND publish <> 'draft'");
+  const best = rows.filter((r) => heroQualifies(ctx, r, statusOf(ctx, r))).sort((a, b) => heroKey(b).localeCompare(heroKey(a)))[0];
+  return json({ campaign: best ? await detail(ctx, best) : null });
 };
 
 export const getCampaign: Handler = async (_req, ctx, p) => {

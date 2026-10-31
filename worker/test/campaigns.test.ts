@@ -70,19 +70,66 @@ describe('campaigns', () => {
     expect((await h.call('PUT', `/api/campaigns/${id}`, { ...admin, body: { hostGroupId: 'nope' } })).status).toBe(400);
   });
 
-  test('hero is exclusive', async () => {
+  test('home hero resolves per viewer date: latest started hero wins', async () => {
     const { h, admin, practice, publish, missions } = await setup();
-    const a = await practice(), b = await practice({ title: '두 번째' });
+    const a = await practice({ title: 'A', schedule: { ...SCHEDULE, recruitStart: '2027-01-01', recruitStartTime: null } });
+    const b = await practice({ title: 'B' }); // recruitStart 2027-01-04 10:00
     for (const id of [a, b]) expect((await missions(id, MISSIONS)).status).toBe(200);
     expect((await publish(a, { mode: 'now', hero: true })).status).toBe(200);
-    expect((await publish(b, { mode: 'scheduled', hero: true })).status).toBe(200);
+    expect((await publish(b, { mode: 'scheduled', hero: true, showUpcoming: true })).status).toBe(200);
+    // publishing B does not clear A
+    expect((await h.db.all<{ id: string }>('SELECT id FROM campaigns WHERE hero = 1 ORDER BY title')).map((r) => r.id)).toEqual([a, b]);
+    const u = await user(h, '보는 사람');
+    const hero = async (date: string, time: string) =>
+      (await (await h.call('GET', '/api/campaigns/hero', as(u, { 'X-Sim-Date': date, 'X-Sim-Time': time }))).json()).campaign?.campaign.id ?? null;
+    expect(await hero('2026-12-31', '12:00')).toBeNull();
+    expect(await hero('2027-01-03', '12:00')).toBe(a);
+    expect(await hero('2027-01-04', '09:59')).toBe(a);
+    expect(await hero('2027-01-04', '10:00')).toBe(b);
+    const list = await (await h.call('GET', '/api/campaigns?hero=1', as(u, { 'X-Sim-Date': '2027-01-03', 'X-Sim-Time': '12:00' }))).json();
+    expect(list.items.map((c: { id: string }) => c.id)).toEqual([a]);
+    // after B closes it drops out (A also closed by then → none)
+    expect(await hero('2027-03-08', '12:00')).toBeNull();
+    // heroEnabled and hero column stay in sync on PUT and on unpublish
+    await h.call('PUT', `/api/campaigns/${b}`, { ...admin, body: { settings: { heroEnabled: false } } });
+    expect((await h.db.first<{ hero: number }>('SELECT hero FROM campaigns WHERE id = ?', b))!.hero).toBe(0);
+    await h.call('PUT', `/api/campaigns/${b}`, { ...admin, body: { settings: { heroEnabled: true } } });
+    expect((await h.db.first<{ hero: number }>('SELECT hero FROM campaigns WHERE id = ?', b))!.hero).toBe(1);
+    await publish(a, { mode: 'draft' });
     const da = await (await h.call('GET', `/api/campaigns/${a}`, admin)).json();
-    const db = await (await h.call('GET', `/api/campaigns/${b}`, admin)).json();
     expect(da.campaign.hero).toBe(false);
     expect(da.campaign.settings.heroEnabled).toBe(false);
-    expect(db.campaign.hero).toBe(true);
-    const rows = await h.db.all<{ id: string }>('SELECT id FROM campaigns WHERE hero = 1');
-    expect(rows.map((r) => r.id)).toEqual([b]);
+  });
+
+  test('clone drops absolute dates of dated missions', async () => {
+    const { h, admin, practice, missions } = await setup();
+    const id = await practice({ settings: { recordEnabled: true, missionCycle: 'dated', recordCycle: 'once_end' } });
+    expect((await missions(id, [{ date: '2027-02-10', category: '행동', title: '지구의 날', extraFields: [] }])).status).toBe(200);
+    const c = (await (await h.call('POST', `/api/campaigns/${id}/clone`, { ...admin, body: {} })).json());
+    expect(c.missions).toEqual([expect.objectContaining({ title: '지구의 날', date: null, round: null })]);
+  });
+
+  test('explainer post cannot be changed through generic post endpoints by non-admins', async () => {
+    const { h, admin, create, publish } = await setup();
+    const id = await create({ type: 'signature', title: '서명', summary: '서명해요.', schedule: { recruitStart: '2027-01-04', recruitEnd: '2027-02-28' }, settings: { demandSummary: '요구안' } });
+    const ex = (await (await h.call('PUT', `/api/campaigns/${id}/explainer`, { ...admin, body: { title: '설명', body: '본문' } })).json()).explainer;
+    await publish(id);
+    const u = await user(h, '서명자');
+    await h.db.run("INSERT INTO participations (id, created_at, campaign_id, user_id, state) VALUES ('p1','t',?,?,'signed')", id, u);
+    const asU = as(u, { 'X-Sim-Date': '2027-01-10' });
+    expect((await h.call('PATCH', `/api/posts/${ex.id}`, { ...asU, body: { title: '바꿈' } })).status).toBe(403);
+    expect((await h.call('DELETE', `/api/posts/${ex.id}`, asU)).status).toBe(403);
+    expect((await h.call('POST', `/api/posts/${ex.id}/comments`, { ...asU, body: { body: '댓글' } })).status).toBe(403);
+    expect((await h.call('POST', `/api/posts/${ex.id}/like`, asU)).status).toBe(403);
+    expect((await h.call('POST', `/api/posts/${ex.id}/hide`, as(u, { 'X-Role': 'staff' }))).status).toBe(403);
+    // participants cannot forge an explainer on the campaign board, nor convert a post into one
+    expect((await h.call('POST', `/api/boards/campaign/${id}/posts`, { ...asU, body: { category: 'explainer', title: 't', body: 'b' } })).status).toBe(400);
+    const own = (await (await h.call('POST', `/api/boards/campaign/${id}/posts`, { ...asU, body: { category: '자유', title: 't', body: 'b' } })).json()).id;
+    expect((await h.call('PATCH', `/api/posts/${own}`, { ...asU, body: { category: 'explainer' } })).status).toBe(400);
+    // admin may still patch it (category stays)
+    expect((await h.call('PATCH', `/api/posts/${ex.id}`, { ...admin, body: { title: '관리자 수정' } })).status).toBe(200);
+    expect((await h.call('PATCH', `/api/posts/${ex.id}`, { ...admin, body: { category: '자유' } })).status).toBe(400);
+    expect((await h.db.first<{ title: string }>('SELECT title FROM posts WHERE id = ?', ex.id))!.title).toBe('관리자 수정');
   });
 
   test('clone clears schedule and participants', async () => {

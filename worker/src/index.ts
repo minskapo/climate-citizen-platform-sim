@@ -7,7 +7,7 @@ import { acceptTransfer, closeGroup, createGroup, createInvite, getGroupRoute, j
 import { addComment, createPost, deletePost, getPost, hidePost, likePost, listPosts, patchPost, pinPost, popular, unhidePost, unpinPost } from './routes/posts';
 import { getFile } from './routes/files';
 import {
-  addCampaignFile, cloneCampaign, createBundle, createCampaign, deleteCampaignFile, getCampaign, importBundle, listBundles, listCampaigns,
+  addCampaignFile, cloneCampaign, createBundle, createCampaign, deleteCampaignFile, getCampaign, getHero, importBundle, listBundles, listCampaigns,
   patchCampaignFile, publishCampaign, putCampaignTools, putChecklist, putExplainer, putMissions, updateCampaign,
 } from './routes/campaigns';
 import { createReport } from './routes/reports';
@@ -54,6 +54,7 @@ export const routes: Route[] = [
   { method: 'POST', pattern: '/api/reports', handler: createReport },
   { method: 'GET', pattern: '/api/campaigns', handler: listCampaigns },
   { method: 'POST', pattern: '/api/campaigns', handler: createCampaign },
+  { method: 'GET', pattern: '/api/campaigns/hero', handler: getHero }, // before :id
   { method: 'GET', pattern: '/api/campaigns/:id', handler: getCampaign },
   { method: 'PUT', pattern: '/api/campaigns/:id', handler: updateCampaign },
   { method: 'POST', pattern: '/api/campaigns/:id/publish', handler: publishCampaign },

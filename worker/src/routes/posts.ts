@@ -34,6 +34,10 @@ interface Board {
 
 const admin = (ctx: Ctx) => ctx.role === 'admin';
 
+/** 서명 설명 글: managed through PUT /api/campaigns/:id/explainer; generic mutations are admin-only. */
+const isExplainer = (p: { board_type: string; category: string }) => p.board_type === 'campaign' && p.category === 'explainer';
+const explainerOnly = () => fail(403, 'EXPLAINER_ADMIN_ONLY', '캠페인 설명 글은 관리자만 고칠 수 있어요');
+
 /** Resolves access to a board. Returns a 404 Response if the board does not exist / is gone. */
 export async function loadBoard(ctx: Ctx, type: string, id: string): Promise<Board | Response> {
   if (type === 'group') {
@@ -141,6 +145,7 @@ export const createPost: Handler = async (req, ctx, p) => {
   if (!text.trim() || text.length > 10000) return fail(400, 'BAD_BODY', '내용은 1~10000자로 써 주세요');
   if (b.categories && !b.categories.includes(category)) return fail(400, 'BAD_CATEGORY', '게시판 분류가 올바르지 않아요');
   if (category === '공지' && !b.staff) return fail(403, 'NOTICE_STAFF_ONLY', '공지는 운영진만 쓸 수 있어요');
+  if (b.type === 'campaign' && category === 'explainer') return fail(400, 'BAD_CATEGORY', '게시판 분류가 올바르지 않아요');
 
   const raw = Array.isArray(body.attachments) ? body.attachments : [];
   if (raw.length > 5) return fail(400, 'TOO_MANY_FILES', '첨부는 5개까지 올릴 수 있어요');
@@ -205,8 +210,9 @@ export const patchPost: Handler = async (req, ctx, p) => {
   if (uid instanceof Response) return uid;
   const r = await loadPost(ctx, p.id);
   if (r instanceof Response) return r;
+  if (isExplainer(r.post) && !admin(ctx)) return explainerOnly();
   const { post, board } = r;
-  if (post.author_id !== uid) return fail(403, 'NOT_AUTHOR', '쓴 사람만 고칠 수 있어요');
+  if (post.author_id !== uid && !(isExplainer(post) && admin(ctx))) return fail(403, 'NOT_AUTHOR', '쓴 사람만 고칠 수 있어요');
   if (board.closed) return fail(409, 'GROUP_CLOSED', '닫힌 모임이에요');
   const body = await readBody(req);
   if (!body) return fail(400, 'BAD_JSON', '요청 형식이 올바르지 않아요');
@@ -216,6 +222,7 @@ export const patchPost: Handler = async (req, ctx, p) => {
   if (!title || [...title].length > 100) return fail(400, 'BAD_TITLE', '제목은 1~100자로 써 주세요');
   if (!text.trim() || text.length > 10000) return fail(400, 'BAD_BODY', '내용은 1~10000자로 써 주세요');
   if (board.categories && !board.categories.includes(category)) return fail(400, 'BAD_CATEGORY', '게시판 분류가 올바르지 않아요');
+  if (post.board_type === 'campaign' && (post.category === 'explainer') !== (category === 'explainer')) return fail(400, 'BAD_CATEGORY', '게시판 분류가 올바르지 않아요');
   if (category === '공지' && category !== post.category && !board.staff) return fail(403, 'NOTICE_STAFF_ONLY', '공지는 운영진만 쓸 수 있어요');
   await ctx.db.run('UPDATE posts SET title = ?, body = ?, category = ? WHERE id = ?', title, text, category, post.id);
   const row = (await ctx.db.first<PostRow>('SELECT * FROM posts WHERE id = ?', post.id))!;
@@ -227,6 +234,7 @@ export const deletePost: Handler = async (_req, ctx, p) => {
   if (uid instanceof Response) return uid;
   const r = await loadPost(ctx, p.id);
   if (r instanceof Response) return r;
+  if (isExplainer(r.post) && !admin(ctx)) return explainerOnly();
   const { post, board } = r;
   if (post.author_id !== uid && !board.staff) return fail(403, 'FORBIDDEN', '지울 수 있는 권한이 없어요');
   if (board.closed) return fail(409, 'GROUP_CLOSED', '닫힌 모임이에요');
@@ -246,6 +254,7 @@ function staffFlag(column: 'pinned' | 'hidden', value: 0 | 1): Handler {
     // Staff must be able to reach hidden posts, so load via the post then check staff.
     const post = await ctx.db.first<PostRow>('SELECT * FROM posts WHERE id = ?', p.id);
     if (!post) return fail(404, 'POST_NOT_FOUND', '글을 찾을 수 없어요');
+    if (isExplainer(post) && !admin(ctx)) return explainerOnly();
     const board = await loadBoard(ctx, post.board_type, post.board_id);
     if (board instanceof Response) return board;
     if (!board.staff) return fail(403, 'NOT_STAFF', '운영진만 할 수 있어요');
@@ -264,6 +273,7 @@ export const likePost: Handler = async (_req, ctx, p) => {
   if (uid instanceof Response) return uid;
   const r = await loadPost(ctx, p.id);
   if (r instanceof Response) return r;
+  if (isExplainer(r.post) && !admin(ctx)) return explainerOnly();
   const had = await ctx.db.first("SELECT id FROM reactions WHERE target_type = 'post' AND target_id = ? AND user_id = ? AND kind = 'like'", p.id, uid);
   if (had) await ctx.db.run("DELETE FROM reactions WHERE target_type = 'post' AND target_id = ? AND user_id = ? AND kind = 'like'", p.id, uid);
   else await ctx.db.run("INSERT INTO reactions (id, created_at, target_type, target_id, user_id, kind, sim_date) VALUES (?,?,'post',?,?,'like',?)", nanoid(), ctx.now, p.id, uid, ctx.simDate);
@@ -275,6 +285,7 @@ export const addComment: Handler = async (req, ctx, p) => {
   if (uid instanceof Response) return uid;
   const r = await loadPost(ctx, p.id);
   if (r instanceof Response) return r;
+  if (isExplainer(r.post) && !admin(ctx)) return explainerOnly();
   if (!r.board.canWrite) return fail(r.board.closed ? 409 : 403, r.board.closed ? 'GROUP_CLOSED' : 'NOT_MEMBER', r.board.closed ? '닫힌 모임이에요' : '멤버만 댓글을 쓸 수 있어요');
   if (r.post.hidden) return fail(409, 'POST_HIDDEN', '숨겨진 글에는 댓글을 쓸 수 없어요');
   const body = await readBody(req);
