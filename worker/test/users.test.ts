@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'vitest';
+import { handle } from '../src/index';
+import type { Db } from '../src/db';
 import { harness } from './helpers/client';
 
 const create = (h: ReturnType<typeof harness>, nickname: string) =>
@@ -33,5 +35,32 @@ describe('users', () => {
     expect((await patched.json()).sigungu).toBe('종로구');
     const taken = await h.call('PATCH', '/api/me', { headers: hdr, body: { nickname: '햇빛' } });
     expect(taken.status).toBe(409);
+  });
+
+  // Db wrapper: the nickname pre-check sees nothing, and the write throws `err`.
+  const racy = (inner: Db, err: Error, onlyUpdate: boolean): Db => ({
+    ...inner,
+    first: (sql: string, ...p: unknown[]) =>
+      (sql.includes('SELECT id FROM users WHERE nickname') ? Promise.resolve(null) : inner.first(sql, ...p)) as never,
+    run: (sql: string, ...p: unknown[]) =>
+      (onlyUpdate ? sql.startsWith('UPDATE users') : /^(UPDATE|INSERT INTO) users/.test(sql))
+        ? Promise.reject(err)
+        : inner.run(sql, ...p),
+  });
+
+  test('patchMe race: UNIQUE violation → 409, other DB error → 500', async () => {
+    const h = harness();
+    const u = await (await create(h, '경주')).json();
+    const req = () =>
+      new Request('https://x.test/api/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', 'X-User-Id': u.id, 'X-Sim-Token': tokenHolder.t },
+        body: JSON.stringify({ nickname: '새이름' }),
+      });
+    const tokenHolder = { t: await (await import('../src/auth')).issueToken(h.env.TOKEN_SECRET, Date.now()) };
+    const uniq = await handle(req(), h.env, racy(h.db, new Error('UNIQUE constraint failed: users.nickname'), true));
+    expect(uniq.status).toBe(409);
+    const other = await handle(req(), h.env, racy(h.db, new Error('disk I/O error'), true));
+    expect(other.status).toBe(500);
   });
 });

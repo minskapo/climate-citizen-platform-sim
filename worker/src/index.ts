@@ -47,8 +47,12 @@ const CORS_HEADERS =
 
 export async function handle(req: Request, env: Env, db: Db): Promise<Response> {
   const origin = req.headers.get('origin');
-  const res = await route(req, env, db);
-  return withCors(res, origin);
+  try {
+    return withCors(await route(req, env, db), origin);
+  } catch (e) {
+    console.error(e);
+    return withCors(fail(500, 'INTERNAL', '서버에 문제가 생겼어요'), origin);
+  }
 }
 
 async function route(req: Request, env: Env, db: Db): Promise<Response> {

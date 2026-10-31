@@ -43,6 +43,8 @@ async function readBody(req: Request): Promise<Record<string, unknown> | null> {
   }
 }
 
+const isUnique = (e: unknown) => String((e as Error)?.message ?? e).includes('UNIQUE constraint failed');
+
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 
@@ -59,7 +61,8 @@ export const createUser: Handler = async (req, ctx) => {
       'INSERT INTO users (id, created_at, nickname, sido, sigungu, consents_json, sim_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
       id, ctx.now, nick.value, str(body.sido), str(body.sigungu), JSON.stringify(obj(body.consents)), ctx.simDate,
     );
-  } catch {
+  } catch (e) {
+    if (!isUnique(e)) throw e;
     return fail(409, 'NICKNAME_TAKEN', '이미 쓰고 있는 활동명이에요');
   }
   const row = await ctx.db.first<UserRow>('SELECT * FROM users WHERE id = ?', id);
@@ -109,7 +112,8 @@ export const patchMe: Handler = async (req, ctx) => {
       'UPDATE users SET nickname = ?, sido = ?, sigungu = ?, consents_json = ?, settings_json = ? WHERE id = ?',
       nickname, sido, sigungu, consents, settings, row.id,
     );
-  } catch {
+  } catch (e) {
+    if (!isUnique(e)) throw e;
     return fail(409, 'NICKNAME_TAKEN', '이미 쓰고 있는 활동명이에요');
   }
   const next = await ctx.db.first<UserRow>('SELECT * FROM users WHERE id = ?', row.id);
