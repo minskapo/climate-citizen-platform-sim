@@ -13,7 +13,16 @@ describe('daily cap', () => {
     expect(get.status).toBe(200);
   });
 
-  test('every request is counted', async () => {
+  test('unauthenticated requests do not increment the counter', async () => {
+    const h = harness();
+    await h.call('GET', '/api/users', { token: null });
+    await h.call('POST', '/api/enter', { body: { passcode: 'x' }, token: null });
+    await h.call('GET', '/api/users', { token: 'forged.token' });
+    const row = await h.db.first<{ n: number }>('SELECT n FROM request_counts WHERE day = ?', todayReal());
+    expect(row).toBeNull();
+  });
+
+  test('every authenticated request is counted', async () => {
     const h = harness();
     await h.call('GET', '/api/users');
     await h.call('GET', '/api/users');

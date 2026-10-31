@@ -66,17 +66,18 @@ async function route(req: Request, env: Env, db: Db): Promise<Response> {
   const url = new URL(req.url);
   if (!url.pathname.startsWith('/api/')) return fail(404, 'NOT_FOUND', '찾을 수 없어요');
 
-  const count = await countRequest(db, todayReal());
-  if (isBlocked(count, req.method)) {
-    return fail(503, 'DAILY_CAP', '오늘 쓸 수 있는 요청 수를 모두 썼어요. 내일 다시 시도해 주세요');
-  }
-
-  if (req.method === 'POST' && url.pathname === '/api/enter') return enter(req, env);
+  if (req.method === 'POST' && url.pathname === '/api/enter') return enter(req, env, db);
 
   const token = req.headers.get('X-Sim-Token');
   if (!token) return fail(401, 'NO_TOKEN', '입장 코드를 먼저 입력해 주세요');
   if (!(await verifyToken(env.TOKEN_SECRET, token, Date.now()))) {
     return fail(401, 'BAD_TOKEN', '입장 시간이 지났어요. 다시 입장해 주세요');
+  }
+
+  // Only token-verified requests count toward the daily cap.
+  const count = await countRequest(db, todayReal());
+  if (isBlocked(count, req.method)) {
+    return fail(503, 'DAILY_CAP', '오늘 쓸 수 있는 요청 수를 모두 썼어요. 내일 다시 시도해 주세요');
   }
 
   const ctx = buildCtx(req, db);

@@ -67,4 +67,36 @@ describe('auth', () => {
     const no = await h.call('GET', '/api/users', { headers: { Origin: 'https://evil.test' } });
     expect(no.headers.get('access-control-allow-origin')).toBeNull();
   });
+
+  test('tampered token MAC or timestamp is rejected', async () => {
+    const now = Date.now();
+    const t = await issueToken('s', now);
+    const [ts, mac] = t.split('.');
+    const flipped = mac.slice(0, -1) + (mac.endsWith('0') ? '1' : '0');
+    expect(await verifyToken('s', `${ts}.${flipped}`, now)).toBe(false);
+    expect(await verifyToken('s', `${Number(ts) + 1000}.${mac}`, now + 2000)).toBe(false);
+    expect(await verifyToken('s', `${Number(ts) + 10 * DAY}.${mac}`, now)).toBe(false);
+  });
+
+  test('enter throttles per IP: 11th failed attempt → 429 without checking passcode', async () => {
+    const h = harness();
+    const ip = { 'CF-Connecting-IP': '1.2.3.4' };
+    for (let i = 0; i < 10; i++) {
+      const r = await h.call('POST', '/api/enter', { body: { passcode: 'bad' }, token: null, headers: ip });
+      expect(r.status).toBe(401);
+    }
+    const blocked = await h.call('POST', '/api/enter', { body: { passcode: 'test-pass' }, token: null, headers: ip });
+    expect(blocked.status).toBe(429);
+    expect((await blocked.json()).error.code).toBe('TOO_MANY_ATTEMPTS');
+    const other = await h.call('POST', '/api/enter', { body: { passcode: 'test-pass' }, token: null, headers: { 'CF-Connecting-IP': '5.6.7.8' } });
+    expect(other.status).toBe(200);
+  });
+
+  test('successful enter does not count toward throttle', async () => {
+    const h = harness();
+    const ip = { 'CF-Connecting-IP': '9.9.9.9' };
+    for (let i = 0; i < 15; i++) {
+      expect((await h.call('POST', '/api/enter', { body: { passcode: 'test-pass' }, token: null, headers: ip })).status).toBe(200);
+    }
+  });
 });

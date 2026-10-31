@@ -104,10 +104,14 @@ export const patchMe: Handler = async (req, ctx) => {
   const sigungu = body.sigungu !== undefined ? str(body.sigungu) : row.sigungu;
   const consents = body.consents !== undefined ? JSON.stringify(obj(body.consents)) : row.consents_json;
   const settings = body.settings !== undefined ? JSON.stringify(obj(body.settings)) : row.settings_json;
-  await ctx.db.run(
-    'UPDATE users SET nickname = ?, sido = ?, sigungu = ?, consents_json = ?, settings_json = ? WHERE id = ?',
-    nickname, sido, sigungu, consents, settings, row.id,
-  );
+  try {
+    await ctx.db.run(
+      'UPDATE users SET nickname = ?, sido = ?, sigungu = ?, consents_json = ?, settings_json = ? WHERE id = ?',
+      nickname, sido, sigungu, consents, settings, row.id,
+    );
+  } catch {
+    return fail(409, 'NICKNAME_TAKEN', '이미 쓰고 있는 활동명이에요');
+  }
   const next = await ctx.db.first<UserRow>('SELECT * FROM users WHERE id = ?', row.id);
   return json(toUser(next!));
 };
