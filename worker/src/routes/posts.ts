@@ -158,7 +158,7 @@ export const createPost: Handler = async (req, ctx, p) => {
     ],
     ...files.map((f): [string, unknown[]] => [
       'INSERT INTO files (id, created_at, mime, bytes, data, owner_id, sim_date, post_id) VALUES (?,?,?,?,?,?,?,?)',
-      [f.id, ctx.now, f.mime, f.bytes, f.data, uid, ctx.simDate, postId],
+      [f.id, ctx.now, f.mime, f.bytes, f.data.buffer.slice(f.data.byteOffset, f.data.byteOffset + f.data.byteLength), uid, ctx.simDate, postId],
     ]),
   ]);
   const row = (await ctx.db.first<PostRow>('SELECT * FROM posts WHERE id = ?', postId))!;
@@ -227,6 +227,7 @@ export const deletePost: Handler = async (_req, ctx, p) => {
   if (r instanceof Response) return r;
   const { post, board } = r;
   if (post.author_id !== uid && !board.staff) return fail(403, 'FORBIDDEN', '지울 수 있는 권한이 없어요');
+  if (board.closed) return fail(409, 'GROUP_CLOSED', '닫힌 모임이에요');
   await ctx.db.batch([
     ['DELETE FROM files WHERE post_id = ?', [post.id]],
     ['DELETE FROM comments WHERE post_id = ?', [post.id]],
@@ -287,9 +288,10 @@ export const popular: Handler = async (req, ctx) => {
   const days = Math.min(Math.max(Number(sp.get('days') ?? 7) || 7, 1), 90);
   const limit = Math.min(Math.max(Number(sp.get('limit') ?? 6) || 6, 1), 20);
   const from = addDays(ctx.simDate, -days);
-  const rows = await ctx.db.all<PostRow & { group_name: string; comment_count: number; score: number }>(
+  const rows = await ctx.db.all<PostRow & { group_name: string; comment_count: number; like_count: number; score: number }>(
     `SELECT p.*, g.name AS group_name,
             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.hidden = 0) AS comment_count,
+            (SELECT COUNT(*) FROM reactions r WHERE r.target_type = 'post' AND r.target_id = p.id AND r.kind = 'like') AS like_count,
             p.view_count + 3 * (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.hidden = 0) AS score
        FROM posts p JOIN groups g ON g.id = p.board_id
       WHERE p.board_type = 'group' AND g.join_policy <> 'private' AND g.closed_at IS NULL
@@ -299,7 +301,7 @@ export const popular: Handler = async (req, ctx) => {
   );
   const nick = await names(ctx, rows.map((r) => r.author_id));
   return json({
-    items: rows.map((r) => ({ ...summary(r, nick, { commentCount: r.comment_count, likeCount: 0 }), groupName: r.group_name, score: r.score })),
+    items: rows.map((r) => ({ ...summary(r, nick, { commentCount: r.comment_count, likeCount: r.like_count }), groupName: r.group_name, score: r.score })),
     nextCursor: null,
   });
 };

@@ -12,7 +12,7 @@ export function sqliteDb(): Db {
   for (const f of readdirSync(MIGRATIONS).filter((n) => n.endsWith('.sql')).sort()) {
     sqlite.exec(readFileSync(join(MIGRATIONS, f), 'utf8'));
   }
-  const norm = (p: unknown[]) => p.map((v) => (v === undefined ? null : typeof v === 'boolean' ? Number(v) : v));
+  const norm = (p: unknown[]) => p.map((v) => (v === undefined ? null : typeof v === 'boolean' ? Number(v) : v instanceof ArrayBuffer ? Buffer.from(v) : v));
   return {
     async all<T>(sql: string, ...p: unknown[]) {
       return sqlite.prepare(sql).all(...norm(p)) as T[];

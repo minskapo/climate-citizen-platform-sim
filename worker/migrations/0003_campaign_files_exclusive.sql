@@ -1,0 +1,1 @@
+ALTER TABLE campaign_files ADD COLUMN exclusive INTEGER NOT NULL DEFAULT 0;

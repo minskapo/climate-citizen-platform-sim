@@ -97,6 +97,8 @@ describe('posts', () => {
     const r = await (await h.call('GET', '/api/popular?days=7&limit=6', as(pub.m))).json();
     expect(r.items.map((i: { title: string }) => i.title)).toEqual(['인기', '조용']);
     expect(r.items[0].score).toBe(3);
+    await h.call('POST', `/api/posts/${a.id}/like`, as(pub.m));
+    expect((await (await h.call('GET', '/api/popular', as(pub.m))).json()).items[0].likeCount).toBe(1);
   });
 
   test('reports', async () => {
@@ -105,5 +107,24 @@ describe('posts', () => {
     const body = { targetType: 'post', targetId: p.id, reason: '광고' };
     expect((await h.call('POST', '/api/reports', { ...as(m), body })).status).toBe(201);
     expect((await h.call('POST', '/api/reports', { ...as(m), body })).status).toBe(409);
+  });
+
+  test('files: campaign-exclusive standalone files and content-type hardening', async () => {
+    const { h, m, g } = await setup();
+    const other = await user(h, '외부');
+    await h.db.run("INSERT INTO campaigns (id, created_at, type, title, host_group_id, schedule_json) VALUES ('c1','t','practice','x',?, '{}')", g);
+    await h.db.run("INSERT INTO files (id, created_at, mime, bytes, data) VALUES ('f1','t','text/html',2,x'3c62')");
+    await h.db.run("INSERT INTO files (id, created_at, mime, bytes, data) VALUES ('f2','t','image/png',2,x'8950')");
+    await h.db.run("INSERT INTO campaign_files (id, created_at, campaign_id, file_id, exclusive) VALUES ('a','t','c1','f1',1)");
+    expect((await h.call('GET', '/api/files/f1', as(other))).status).toBe(403);
+    await h.db.run("INSERT INTO participations (id, created_at, campaign_id, user_id) VALUES ('p1','t','c1',?)", other);
+    const ok = await h.call('GET', '/api/files/f1', as(other));
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get('content-disposition')).toBe('attachment');
+    expect(ok.headers.get('content-type')).toBe('application/octet-stream');
+    expect(ok.headers.get('x-content-type-options')).toBe('nosniff');
+    const open = await h.call('GET', '/api/files/f2', as(m));
+    expect(open.status).toBe(200);
+    expect(open.headers.get('content-disposition')).toBe('inline');
   });
 });

@@ -79,4 +79,40 @@ describe('groups', () => {
     expect((await h.call('POST', `/api/groups/${g}/close`, { ...as(s), body: { confirmName: '원주 모임' } })).status).toBe(200);
     expect((await h.call('POST', `/api/groups/${g}/join`, as(await user(h, '늦은')))).status).toBe(409);
   });
+
+  test('transfer target leaving before accept -> 409, owner unchanged', async () => {
+    const h = harness();
+    const owner = await user(h, '모임장'), s = await user(h, '운영진');
+    const g = await group(h, owner);
+    await h.call('POST', `/api/groups/${g}/join`, as(s));
+    await h.call('POST', `/api/groups/${g}/members/${s}`, { ...as(owner), body: { action: 'staff' } });
+    await h.call('POST', `/api/groups/${g}/transfer`, { ...as(owner), body: { toUserId: s } });
+    await h.call('POST', `/api/groups/${g}/leave`, as(s));
+    expect((await h.db.first<{ transfer_to: string | null }>('SELECT transfer_to FROM groups WHERE id = ?', g))!.transfer_to).toBeNull();
+    // stale request re-created directly, then target no longer a member
+    await h.db.run("UPDATE groups SET transfer_to = ?, transfer_expires = '2999-01-01' WHERE id = ?", s, g);
+    const r = await h.call('POST', `/api/groups/${g}/transfer/accept`, as(s));
+    expect(r.status).toBe(409);
+    expect((await r.json()).error.code).toBe('TRANSFER_INVALID');
+    expect((await (await h.call('GET', `/api/groups/${g}`, as(owner))).json()).myRole).toBe('owner');
+  });
+
+  test('closed group blocks mutations', async () => {
+    const h = harness();
+    const owner = await user(h, '모임장'), m = await user(h, '멤버');
+    const g = await group(h, owner);
+    await h.call('POST', `/api/groups/${g}/join`, as(m));
+    const p = await (await h.call('POST', `/api/boards/group/${g}/posts`, { ...as(m), body: { category: '자유', title: 't', body: 'b' } })).json();
+    await h.call('POST', `/api/groups/${g}/close`, { ...as(owner), body: { confirmName: '원주 모임' } });
+    for (const [method, path, body] of [
+      ['PATCH', `/api/groups/${g}`, { chatLink: 'x' }],
+      ['POST', `/api/groups/${g}/invites`, undefined],
+      ['POST', `/api/groups/${g}/members/${m}`, { action: 'kick' }],
+      ['POST', `/api/groups/${g}/transfer`, { toUserId: m }],
+      ['DELETE', `/api/posts/${p.id}`, undefined],
+    ] as const) {
+      const r = await h.call(method, path, { ...as(owner), body });
+      expect([method, path, r.status]).toEqual([method, path, 409]);
+    }
+  });
 });

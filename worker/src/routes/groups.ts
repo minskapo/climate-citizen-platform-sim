@@ -54,6 +54,7 @@ async function loadStaffGroup(ctx: Ctx, id: string): Promise<{ g: GroupRow; role
   if (!g || closedGone(ctx, g)) return NOT_FOUND();
   const role = await memberRole(ctx, id, ctx.userId);
   if (!isStaffRole(ctx, id, role) && ctx.role !== 'admin') return fail(403, 'NOT_STAFF', '운영진만 할 수 있어요');
+  if (g.closed_at) return fail(409, 'GROUP_CLOSED', '닫힌 모임이에요');
   return { g, role };
 }
 
@@ -217,6 +218,7 @@ export const leaveGroup: Handler = async (_req, ctx, p) => {
   if (!role || role === 'banned') return fail(404, 'NOT_MEMBER', '가입한 모임이 아니에요');
   if (role === 'owner') return fail(409, 'OWNER_CANNOT_LEAVE', '모임장은 먼저 모임장을 넘겨 주세요');
   await ctx.db.run('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', p.id, uid);
+  await ctx.db.run('UPDATE groups SET transfer_to = NULL, transfer_expires = NULL WHERE id = ? AND transfer_to = ?', p.id, uid);
   return json({ ok: true });
 };
 
@@ -257,6 +259,9 @@ export const memberAction: Handler = async (req, ctx, p) => {
   } else {
     await set('banned');
   }
+  if (action === 'kick' || action === 'ban') {
+    await ctx.db.run('UPDATE groups SET transfer_to = NULL, transfer_expires = NULL WHERE id = ? AND transfer_to = ?', p.id, p.uid);
+  }
   return json({ ok: true });
 };
 
@@ -264,6 +269,7 @@ async function loadOwnerGroup(ctx: Ctx, id: string): Promise<GroupRow | Response
   const g = await getGroup(ctx, id);
   if (!g || closedGone(ctx, g)) return NOT_FOUND();
   if ((await memberRole(ctx, id, ctx.userId)) !== 'owner') return fail(403, 'OWNER_ONLY', '모임장만 할 수 있어요');
+  if (g.closed_at) return fail(409, 'GROUP_CLOSED', '닫힌 모임이에요');
   return g;
 }
 
@@ -284,7 +290,13 @@ export const acceptTransfer: Handler = async (_req, ctx, p) => {
   const g = await getGroup(ctx, p.id);
   if (!g || closedGone(ctx, g)) return NOT_FOUND();
   if (!g.transfer_to || g.transfer_to !== uid) return fail(403, 'NOT_TRANSFER_TARGET', '넘겨받을 사람만 수락할 수 있어요');
+  if (g.closed_at) return fail(409, 'GROUP_CLOSED', '닫힌 모임이에요');
   if (!g.transfer_expires || g.transfer_expires < ctx.now) return fail(409, 'TRANSFER_EXPIRED', '요청이 만료됐어요');
+  const tr = await memberRole(ctx, g.id, uid);
+  if (tr !== 'staff' && tr !== 'member') {
+    await ctx.db.run('UPDATE groups SET transfer_to = NULL, transfer_expires = NULL WHERE id = ?', g.id);
+    return fail(409, 'TRANSFER_INVALID', '넘겨받을 수 없는 상태예요');
+  }
   await ctx.db.batch([
     ["UPDATE group_members SET role = 'staff' WHERE group_id = ? AND role = 'owner'", [g.id]],
     ["UPDATE group_members SET role = 'owner' WHERE group_id = ? AND user_id = ?", [g.id, uid]],
@@ -296,7 +308,6 @@ export const acceptTransfer: Handler = async (_req, ctx, p) => {
 export const closeGroup: Handler = async (req, ctx, p) => {
   const g = await loadOwnerGroup(ctx, p.id);
   if (g instanceof Response) return g;
-  if (g.closed_at) return fail(409, 'GROUP_CLOSED', '이미 닫힌 모임이에요');
   const body = await readBody(req);
   if (str(body?.confirmName) !== g.name) return fail(400, 'NAME_MISMATCH', '모임 이름이 맞지 않아요');
   const active = await campaignBadge(ctx, g.id, true);
