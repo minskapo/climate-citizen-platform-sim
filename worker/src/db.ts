@@ -15,6 +15,8 @@ export interface Ctx {
   simTime: HHMM;
   staffGroupId: string | null;
   now: string;
+  /** HMAC secret (TOKEN_SECRET) for server-derived codes such as attendance. */
+  secret: string;
 }
 
 export type Handler = (req: Request, ctx: Ctx, params: Record<string, string>) => Promise<Response>;

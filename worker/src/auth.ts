@@ -7,7 +7,7 @@ const ROLES: readonly Role[] = ['guest', 'member', 'staff', 'admin'];
 
 const enc = new TextEncoder();
 
-async function hmacHex(secret: string, msg: string): Promise<string> {
+export async function hmacHex(secret: string, msg: string): Promise<string> {
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(msg)));
   return [...sig].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -52,7 +52,7 @@ function seoulTime(): HHMM {
 }
 
 /** Builds the request context from headers; returns a Response on invalid headers. */
-export function buildCtx(req: Request, db: Db): Ctx | Response {
+export function buildCtx(req: Request, db: Db, secret = ''): Ctx | Response {
   const h = req.headers;
 
   const rawRole = h.get('X-Role');
@@ -78,5 +78,6 @@ export function buildCtx(req: Request, db: Db): Ctx | Response {
     simTime,
     staffGroupId: h.get('X-Staff-Group') || null,
     now: new Date().toISOString(),
+    secret,
   };
 }

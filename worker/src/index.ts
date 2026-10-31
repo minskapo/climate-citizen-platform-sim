@@ -12,6 +12,13 @@ import {
 } from './routes/campaigns';
 import { createReport } from './routes/reports';
 import { createUser, getMe, listUsers, patchMe } from './routes/users';
+import {
+  cancelParticipation, checklistDone, getParticipation, participate, pauseParticipation, putReminder, quitParticipation,
+} from './routes/participations';
+import { listRecords, putRecord, todayCount } from './routes/records';
+import { attend, attendManual, getAttendanceCode, unattend } from './routes/attendance';
+import { claimMeasurements, createMeasurement, myMeasurements, putChoices } from './routes/measurements';
+import { calculatorAggregate, signatureAggregate, toolAggregate } from './routes/aggregates';
 
 const ALLOWED_ORIGINS = ['https://minskapo.github.io', 'http://localhost:5173'];
 
@@ -69,6 +76,27 @@ export const routes: Route[] = [
   { method: 'PUT', pattern: '/api/campaigns/:id/explainer', handler: putExplainer },
   { method: 'GET', pattern: '/api/mission-bundles', handler: listBundles },
   { method: 'POST', pattern: '/api/mission-bundles', handler: createBundle },
+  { method: 'POST', pattern: '/api/campaigns/:id/participate', handler: participate },
+  { method: 'POST', pattern: '/api/campaigns/:id/checklist/:itemId/done', handler: checklistDone },
+  { method: 'GET', pattern: '/api/campaigns/:id/today-count', handler: todayCount },
+  { method: 'GET', pattern: '/api/campaigns/:id/attendance-code', handler: getAttendanceCode },
+  { method: 'POST', pattern: '/api/campaigns/:id/attend', handler: attend },
+  { method: 'GET', pattern: '/api/participations/:id', handler: getParticipation },
+  { method: 'POST', pattern: '/api/participations/:id/cancel', handler: cancelParticipation },
+  { method: 'POST', pattern: '/api/participations/:id/pause', handler: pauseParticipation },
+  { method: 'POST', pattern: '/api/participations/:id/quit', handler: quitParticipation },
+  { method: 'PUT', pattern: '/api/participations/:id/reminder', handler: putReminder },
+  { method: 'GET', pattern: '/api/participations/:id/records', handler: listRecords },
+  { method: 'PUT', pattern: '/api/participations/:id/records/:slotDate', handler: putRecord },
+  { method: 'POST', pattern: '/api/participations/:id/attend-manual', handler: attendManual },
+  { method: 'POST', pattern: '/api/participations/:id/unattend', handler: unattend },
+  { method: 'POST', pattern: '/api/measurements', handler: createMeasurement },
+  { method: 'POST', pattern: '/api/measurements/claim', handler: claimMeasurements }, // before :id
+  { method: 'POST', pattern: '/api/measurements/:id/choices', handler: putChoices },
+  { method: 'GET', pattern: '/api/me/measurements', handler: myMeasurements },
+  { method: 'GET', pattern: '/api/aggregates/calculator', handler: calculatorAggregate },
+  { method: 'GET', pattern: '/api/aggregates/signature/:id', handler: signatureAggregate },
+  { method: 'GET', pattern: '/api/aggregates/tool/:toolId/:key', handler: toolAggregate },
 ];
 
 function match(pattern: string, path: string): Record<string, string> | null {
@@ -134,7 +162,7 @@ async function route(req: Request, env: Env, db: Db): Promise<Response> {
     return fail(503, 'DAILY_CAP', '오늘 쓸 수 있는 요청 수를 모두 썼어요. 내일 다시 시도해 주세요');
   }
 
-  const ctx = buildCtx(req, db);
+  const ctx = buildCtx(req, db, env.TOKEN_SECRET);
   if (ctx instanceof Response) return ctx;
 
   let pathMatched = false;

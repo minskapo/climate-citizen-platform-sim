@@ -1,12 +1,13 @@
 import { fail, type Handler } from '../db';
 import { canUseExclusive, explainerVisible } from './campaigns';
 import { loadBoard } from './posts';
+import { canSeeRecordFile } from './records';
 
 const RASTER = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export const getFile: Handler = async (_req, ctx, p) => {
-  const f = await ctx.db.first<{ mime: string; data: ArrayLike<number> | ArrayBuffer; post_id: string | null }>(
-    'SELECT mime, data, post_id FROM files WHERE id = ?',
+  const f = await ctx.db.first<{ mime: string; data: ArrayLike<number> | ArrayBuffer; post_id: string | null; record_id: string | null }>(
+    'SELECT mime, data, post_id, record_id FROM files WHERE id = ?',
     p.id,
   );
   if (!f) return fail(404, 'FILE_NOT_FOUND', '파일을 찾을 수 없어요');
@@ -24,6 +25,9 @@ export const getFile: Handler = async (_req, ctx, p) => {
       if (!b.canRead) return fail(403, 'FORBIDDEN', '볼 수 있는 권한이 없어요');
       if (post.hidden && !b.staff && post.author_id !== ctx.userId) return fail(404, 'FILE_NOT_FOUND', '파일을 찾을 수 없어요');
     }
+  } else if (f.record_id) {
+    // Mission record photos: owner, host-group staff, admin (설계 7).
+    if (!(await canSeeRecordFile(ctx, f.record_id))) return fail(403, 'FORBIDDEN', '볼 수 있는 권한이 없어요');
   } else {
     // Campaign files: if ANY link is exclusive, the viewer must be a participant / host-group staff / admin
     // of at least one of the exclusive campaigns (a non-exclusive link elsewhere does not open it up).

@@ -1,0 +1,16 @@
+ALTER TABLE participations ADD COLUMN transport TEXT NOT NULL DEFAULT '';
+ALTER TABLE participations ADD COLUMN start_measurement_id TEXT;
+ALTER TABLE participations ADD COLUMN paused_from TEXT;
+ALTER TABLE participations ADD COLUMN paused_until TEXT;
+ALTER TABLE participations ADD COLUMN pause_used INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE participations ADD COLUMN quit_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE participations ADD COLUMN checklist_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE participations ADD COLUMN updated_sim_date TEXT;
+CREATE INDEX idx_participations_campaign ON participations (campaign_id, state);
+CREATE UNIQUE INDEX idx_records_slot ON records (participation_id, slot_date);
+CREATE INDEX idx_records_slot_date ON records (slot_date);
+CREATE UNIQUE INDEX idx_attendance_participation ON attendance (participation_id);
+CREATE INDEX idx_measurements_user ON measurements (user_id, created_at);
+CREATE INDEX idx_measurements_local ON measurements (local_id);
+ALTER TABLE files ADD COLUMN record_id TEXT;
+CREATE INDEX idx_tool_records_tool ON tool_records (tool_id, campaign_id);

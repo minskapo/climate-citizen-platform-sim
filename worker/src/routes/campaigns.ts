@@ -113,7 +113,7 @@ const missionView = (m: MissionRow): Mission => ({
   ...(m.description ? { description: m.description } : {}), extraFields: JSON.parse(m.fields_json) as RecordField[],
 });
 
-async function missionsOf(ctx: Ctx, campaignId: string): Promise<Mission[]> {
+export async function missionsOf(ctx: Ctx, campaignId: string): Promise<Mission[]> {
   const rows = await ctx.db.all<MissionRow>('SELECT * FROM missions WHERE campaign_id = ? ORDER BY position, round, date, id', campaignId);
   return rows.map(missionView);
 }
@@ -135,8 +135,37 @@ async function campaignView(ctx: Ctx, r: CampaignRow, showExact: boolean) {
 
 interface ChecklistEntry { key: string; kind: 'auto' | 'custom'; label: string; linkType?: 'post' | 'tool' | 'url'; target?: string; done: boolean }
 
-/** Auto items (설계 6.3 · M-2 · M-2s · M-2o) + admin items. Completion is computed in Task 9. */
-async function checklistOf(ctx: Ctx, r: CampaignRow, settings: CampaignSettings, missionCount: number, materialCount: number): Promise<ChecklistEntry[]> {
+interface MyChecklistState { id: string; start_measurement_id: string | null; answers_json: string; checklist_json: string; state: string }
+
+/** Auto items (설계 6.3 · M-2 · M-2s · M-2o) + admin items, with the caller's completion. */
+async function checklistOf(
+  ctx: Ctx, r: CampaignRow, settings: CampaignSettings, missionCount: number, materialCount: number, mine: MyChecklistState | null = null,
+): Promise<ChecklistEntry[]> {
+  const out = await checklistBase(ctx, r, settings, missionCount, materialCount);
+  if (!mine || mine.state === 'cancelled' || !ctx.userId) return out;
+  const marked = JSON.parse(mine.checklist_json || '{}') as Record<string, boolean>;
+  const answers = JSON.parse(mine.answers_json || '{}') as { reminder?: { enabled?: boolean } };
+  const startDone = !!mine.start_measurement_id || !!(await ctx.db.first(
+    "SELECT id FROM measurements WHERE user_id = ? AND campaign_id = ? AND kind = 'start'", ctx.userId, r.id));
+  const greetDone = !!(await ctx.db.first(
+    "SELECT id FROM posts WHERE board_type = 'campaign' AND board_id = ? AND author_id = ? AND category <> 'explainer'", r.id, ctx.userId));
+  for (const e of out) {
+    if (e.key === 'start_point') e.done = startDone;
+    else if (e.key === 'reminder') e.done = !!answers.reminder?.enabled;
+    else if (e.key === 'greet') e.done = greetDone || !!marked.greet;
+    else e.done = !!marked[e.key];
+  }
+  return out;
+}
+
+/** Keys a participant may mark done via POST /checklist/:itemId/done. */
+export async function checklistKeys(ctx: Ctx, r: CampaignRow): Promise<string[]> {
+  const missions = await missionsOf(ctx, r.id);
+  const materials = (await filesOf(ctx, r.id)).length + (await toolsOf(ctx, r.id)).length;
+  return (await checklistBase(ctx, r, settingsOf(r), missions.length, materials)).map((e) => e.key);
+}
+
+async function checklistBase(ctx: Ctx, r: CampaignRow, settings: CampaignSettings, missionCount: number, materialCount: number): Promise<ChecklistEntry[]> {
   const auto = (key: string, label: string): ChecklistEntry => ({ key, kind: 'auto', label, done: false });
   const out: ChecklistEntry[] = [];
   if (r.type === 'practice') {
@@ -199,7 +228,7 @@ async function detail(ctx: Ctx, r: CampaignRow) {
   const st = statusOf(ctx, r);
   const settings = settingsOf(r);
   const mine = ctx.userId
-    ? await ctx.db.first<{ id: string; state: string; companions: number; waitlist_no: number | null; consents_json: string; answers_json: string; created_at: string; sim_date: string | null }>(
+    ? await ctx.db.first<{ id: string; state: string; companions: number; waitlist_no: number | null; consents_json: string; answers_json: string; created_at: string; sim_date: string | null; start_measurement_id: string | null; checklist_json: string; transport: string; paused_from: string | null; paused_until: string | null; pause_used: number }>(
       'SELECT * FROM participations WHERE campaign_id = ? AND user_id = ?', r.id, ctx.userId)
     : null;
   const exclusiveOk = await canUseExclusive(ctx, r.id, r.host_group_id);
@@ -213,10 +242,10 @@ async function detail(ctx: Ctx, r: CampaignRow) {
     phase: st === 'draft' ? null : participantPhase(statusInput(r), ctx.simDate),
     counts: await countsOf(ctx, r, settings),
     myParticipation: mine
-      ? { id: mine.id, state: mine.state, companions: mine.companions, waitlistNo: mine.waitlist_no, consents: JSON.parse(mine.consents_json), answers: JSON.parse(mine.answers_json), createdAt: mine.created_at, simDate: mine.sim_date }
+      ? { id: mine.id, state: mine.state, companions: mine.companions, waitlistNo: mine.waitlist_no, consents: JSON.parse(mine.consents_json), answers: JSON.parse(mine.answers_json), createdAt: mine.created_at, simDate: mine.sim_date, transport: mine.transport, startMeasurementId: mine.start_measurement_id, pausedFrom: mine.paused_from, pausedUntil: mine.paused_until, pauseUsed: !!mine.pause_used, paused: !!mine.paused_from && !!mine.paused_until && ctx.simDate >= mine.paused_from && ctx.simDate <= mine.paused_until }
       : null,
     missions,
-    checklist: await checklistOf(ctx, r, settings, missions.length, files.length + tools.length),
+    checklist: await checklistOf(ctx, r, settings, missions.length, files.length + tools.length, mine),
     files,
     tools,
     explainer: r.type === 'signature' ? await explainerOf(ctx, settings) : null,
