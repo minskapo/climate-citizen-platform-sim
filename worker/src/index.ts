@@ -3,6 +3,10 @@ import { buildCtx, verifyToken } from './auth';
 import { countRequest, isBlocked } from './cap';
 import { d1Db, fail, type Db, type Env, type Handler } from './db';
 import { enter } from './routes/sim';
+import { acceptTransfer, closeGroup, createGroup, createInvite, getGroupRoute, joinGroup, leaveGroup, listGroups, memberAction, patchGroup, transferGroup } from './routes/groups';
+import { addComment, createPost, deletePost, getPost, hidePost, likePost, listPosts, patchPost, pinPost, popular, unhidePost, unpinPost } from './routes/posts';
+import { getFile } from './routes/files';
+import { createReport } from './routes/reports';
 import { createUser, getMe, listUsers, patchMe } from './routes/users';
 
 const ALLOWED_ORIGINS = ['https://minskapo.github.io', 'http://localhost:5173'];
@@ -19,6 +23,31 @@ export const routes: Route[] = [
   { method: 'GET', pattern: '/api/users', handler: listUsers },
   { method: 'GET', pattern: '/api/me', handler: getMe },
   { method: 'PATCH', pattern: '/api/me', handler: patchMe },
+  { method: 'POST', pattern: '/api/groups', handler: createGroup },
+  { method: 'GET', pattern: '/api/groups', handler: listGroups },
+  { method: 'GET', pattern: '/api/groups/:id', handler: getGroupRoute },
+  { method: 'PATCH', pattern: '/api/groups/:id', handler: patchGroup },
+  { method: 'POST', pattern: '/api/groups/:id/join', handler: joinGroup },
+  { method: 'POST', pattern: '/api/groups/:id/leave', handler: leaveGroup },
+  { method: 'POST', pattern: '/api/groups/:id/invites', handler: createInvite },
+  { method: 'POST', pattern: '/api/groups/:id/members/:uid', handler: memberAction },
+  { method: 'POST', pattern: '/api/groups/:id/transfer', handler: transferGroup },
+  { method: 'POST', pattern: '/api/groups/:id/transfer/accept', handler: acceptTransfer },
+  { method: 'POST', pattern: '/api/groups/:id/close', handler: closeGroup },
+  { method: 'GET', pattern: '/api/boards/:type/:id/posts', handler: listPosts },
+  { method: 'POST', pattern: '/api/boards/:type/:id/posts', handler: createPost },
+  { method: 'GET', pattern: '/api/posts/:id', handler: getPost },
+  { method: 'PATCH', pattern: '/api/posts/:id', handler: patchPost },
+  { method: 'DELETE', pattern: '/api/posts/:id', handler: deletePost },
+  { method: 'POST', pattern: '/api/posts/:id/pin', handler: pinPost },
+  { method: 'POST', pattern: '/api/posts/:id/unpin', handler: unpinPost },
+  { method: 'POST', pattern: '/api/posts/:id/hide', handler: hidePost },
+  { method: 'POST', pattern: '/api/posts/:id/unhide', handler: unhidePost },
+  { method: 'POST', pattern: '/api/posts/:id/like', handler: likePost },
+  { method: 'POST', pattern: '/api/posts/:id/comments', handler: addComment },
+  { method: 'GET', pattern: '/api/popular', handler: popular },
+  { method: 'GET', pattern: '/api/files/:id', handler: getFile },
+  { method: 'POST', pattern: '/api/reports', handler: createReport },
 ];
 
 function match(pattern: string, path: string): Record<string, string> | null {
