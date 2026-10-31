@@ -17,7 +17,7 @@
 - 화면 문구는 한국어, 시안의 말투("~해요"체). 글꼴 Asta Sans(Regular/Medium/Bold, Google Fonts).
 - **화면에 개발용 표기를 넣지 않는다**: 화면 코드(H-2, D-1p…), 「플랫폼 공통 항목…」 주석 칩, 맞춤 영역 점선 라벨 금지. 맞춤 블록은 사용자 화면에서 테두리 없이 보인다.
 - 체험 도구 막대(역할 · 활동명 · 내 날짜 · 초기화)만 실제 플랫폼에 없는 요소이며, 어두운 회색 막대로 구분한다.
-- 입장 암호 초기값 `climate15`(Worker secret `SIM_PASSCODE`). 토큰 없는 API 요청은 401.
+- 입장 암호는 Worker secret `SIM_PASSCODE`(값은 저장소에 적지 않음 — 컨트롤러가 실행 시 전달). 토큰 없는 API 요청은 401.
 - 파일 · 이미지 · HTML 1개당 1MB 이하. 이미지는 브라우저에서 긴 변 1280px JPEG(품질 0.75)로 줄여 저장.
 - 하루 요청 80,000건 초과 시 쓰기 요청 거절(503, code `DAILY_CAP`).
 - 알림 수 확인은 문서가 보이는 동안만 60초마다.
@@ -278,7 +278,7 @@ climate-citizen-platform/
   엔드포인트: `POST /api/enter {passcode}` → `{token}` | 401 `BAD_PASSCODE`. `POST /api/users {nickname, sido, sigungu, consents}` → `User` | 409 `NICKNAME_TAKEN`. `GET /api/users?q=` (로그인용 활동명 목록). `GET/PATCH /api/me`.
 - 스키마(`0001_init.sql`) — 모든 표에 `id TEXT PRIMARY KEY`(nanoid), `created_at`(실제 시각), 필요한 곳에 `sim_date`. 표: `users, groups, group_members(role: owner|staff|member|pending|banned), invites, posts(board_type: group|campaign, board_id, category, pinned, hidden, attachments_json, sim_date), comments, reactions, reports, campaigns(type, title, summary, image_file_id, host_group_id NULL, schedule_json, settings_json, publish, show_upcoming, hero, status_cache, created_by), missions, mission_bundles, checklist_items, campaign_files, campaign_tools, participations(state, companions, consents_json, answers_json, waitlist_no, shared_by), records(participation_id, slot_date, fields_json), attendance(participation_id, at, method), measurements(user_id NULL, local_id, answers_json, result_json, actions_json, social_json, policies_json, place, campaign_id, kind: start|end|plain, sim_date), tools, tool_versions(html, manifest_json, status: pending|published|archived), tool_records, files(mime, bytes, data BLOB), notifications(user_id, kind, text, link, dedupe_key UNIQUE, read), collab_proposals(due_at), collab_replies, deliveries, delivery_answers, audit_log, request_counts(day PRIMARY KEY, n)`.
 
-- [ ] **Step 1:** `npx wrangler d1 create climate-sim` 실행, 나온 `database_id`를 `wrangler.toml`에 넣는다. `npx wrangler secret put SIM_PASSCODE`(값 `climate15`, `--config worker/wrangler.toml`), `npx wrangler secret put TOKEN_SECRET`(32바이트 무작위).
+- [ ] **Step 1:** `npx wrangler d1 create climate-sim` 실행, 나온 `database_id`를 `wrangler.toml`에 넣는다. `npx wrangler secret put SIM_PASSCODE`(값은 컨트롤러가 전달, `--config worker/wrangler.toml`), `npx wrangler secret put TOKEN_SECRET`(32바이트 무작위).
 - [ ] **Step 2: 실패하는 테스트**
   ```ts
   test('enter with wrong passcode → 401', ...);
@@ -404,7 +404,7 @@ climate-citizen-platform/
   test('research export only includes consented and hides nickname', ...);
   test('reset requires passcode', ...);
   ```
-- [ ] **Step 2:** FAIL. **Step 3:** 구현. **Step 4:** PASS. **Step 5:** `npx wrangler deploy --config worker/wrangler.toml` 후 `curl -s -X POST https://<worker>.workers.dev/api/enter -d '{"passcode":"climate15"}'`가 토큰을 돌려주는지 확인. 커밋 `feat(worker): notifications, collab, delivery, tools, admin, sim data`.
+- [ ] **Step 2:** FAIL. **Step 3:** 구현. **Step 4:** PASS. **Step 5:** `npx wrangler deploy --config worker/wrangler.toml` 후 `curl -s -X POST https://<worker>.workers.dev/api/enter -d "{\"passcode\":\"$SIM_PASSCODE\"}"`가 토큰을 돌려주는지 확인. 커밋 `feat(worker): notifications, collab, delivery, tools, admin, sim data`.
 
 ### Task 11: 화면 뼈대 — 디자인 토큰 · 공통 부품 · 입장 · 체험 도구 막대 · 배포
 
