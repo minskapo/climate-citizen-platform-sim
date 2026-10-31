@@ -1,0 +1,12 @@
+name = "climate-sim"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[alias]
+"@shared" = "../shared/src"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "climate-sim"
+database_id = "24881a9b-f21e-4c07-a31a-24f5ac9e176a"
+migrations_dir = "migrations"

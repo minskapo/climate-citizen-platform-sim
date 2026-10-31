@@ -6,6 +6,6 @@ export default defineConfig({
     alias: { '@shared': fileURLToPath(new URL('./shared/src', import.meta.url)) },
   },
   test: {
-    include: ['shared/test/**/*.test.ts'],
+    include: ['shared/test/**/*.test.ts', 'worker/test/**/*.test.ts'],
   },
 });
