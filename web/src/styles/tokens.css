@@ -1,0 +1,85 @@
+/* 디자인 토큰 — 시안 컴포넌트(246:3)와 화면 사본에서 뽑은 값 */
+:root {
+  /* 글자 */
+  --c-text: #1A1F1C;
+  --c-text-sub: #6B736E;
+  --c-text-faint: #9AA19D;
+  /* 초록 */
+  --c-green: #1F854F;
+  --c-green-dark: #186A3F;
+  --c-green-tint: #E6F5EB;
+  --c-green-tint-2: #D3EDDC;
+  /* 바탕 · 선 */
+  --c-bg: #F5F9F7;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #F3F5F4;
+  --c-line: #DEE3E0;
+  --c-line-soft: #ECEFED;
+  /* 상태 */
+  --c-danger: #B3261E;
+  --c-danger-dark: #941F18;
+  --c-danger-tint: #FCEBE9;
+  --c-warn-bg: #FDF1D6;
+  --c-warn-text: #8A5A00;
+  --c-yellow-tint: #FDF0CF;
+  --c-blue-tint: #E3EDFA;
+  --c-blue-text: #2F5E9E;
+  --c-navy: #23395D;
+  --c-dark: #1A1F1C;
+  /* 체험 도구 막대(플랫폼 밖 장치) */
+  --c-sim-bg: #2B2F2D;
+  --c-sim-text: #E4E8E6;
+  --c-sim-sub: #A3ABA7;
+  --c-sim-line: #464C49;
+  --c-sim-input: #3A3F3C;
+  --c-sim-accent: #F2C14E;
+
+  /* 반경 */
+  --r-card: 16px;
+  --r-modal: 20px;
+  --r-btn: 10px;
+  --r-input: 10px;
+  --r-chip: 999px;
+  --r-chip-square: 6px;
+  --r-pill: 999px;
+
+  /* 간격 */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* 배치 */
+  --w-container: 1200px;
+  --gutter: 24px;
+  --h-header: 80px;
+
+  /* 글자 */
+  --font: 'Asta Sans', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-28: 28px;
+  --fs-36: 36px;
+
+  --shadow-modal: 0 20px 48px rgba(26, 31, 28, 0.16);
+  --shadow-pop: 0 8px 24px rgba(26, 31, 28, 0.12);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --gutter: 16px;
+    --h-header: 60px;
+  }
+}
