@@ -148,6 +148,11 @@ export const listGroups: Handler = async (req, ctx) => {
   const args: unknown[] = [];
   if (sp.get('region')) { where.push('sido = ?'); args.push(sp.get('region')); }
   if (sp.get('join')) { where.push('join_policy = ?'); args.push(sp.get('join')); }
+  if (sp.get('mine') === '1') {
+    if (!ctx.userId) return json({ items: [], nextCursor: null });
+    where.push("id IN (SELECT group_id FROM group_members WHERE user_id = ? AND role IN ('owner','staff','member'))");
+    args.push(ctx.userId);
+  }
   const q = (sp.get('q') ?? '').trim();
   if (q) { where.push("(name LIKE ? ESCAPE '\\' OR (join_policy <> 'private' AND description LIKE ? ESCAPE '\\'))"); args.push(likeEscape(q), likeEscape(q)); }
   const offset = parseCursor(req);

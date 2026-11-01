@@ -259,3 +259,21 @@ describe('attendance', () => {
     void as;
   });
 });
+
+describe('my participations', () => {
+  test('lists my campaigns with state, missions and requires login', async () => {
+    const { h, practice } = await setup();
+    const id = await practice();
+    const u = await user(h, '내참여');
+    const other = await user(h, '남');
+    expect((await h.call('GET', '/api/me/participations', {})).status).toBe(401);
+    expect((await (await h.call('GET', '/api/me/participations', on(u, '2027-01-10'))).json()).items).toHaveLength(0);
+    await h.call('POST', `/api/campaigns/${id}/participate`, { ...on(u, '2027-01-10'), body: { answers: {}, consents: {} } });
+    const mine = await (await h.call('GET', '/api/me/participations', on(u, '2027-02-10'))).json();
+    expect(mine.items).toHaveLength(1);
+    expect(mine.items[0].campaign.id).toBe(id);
+    expect(mine.items[0].myParticipation.state).toBe('applied');
+    expect(mine.items[0].missions.length).toBeGreaterThan(0);
+    expect((await (await h.call('GET', '/api/me/participations', on(other, '2027-02-10'))).json()).items).toHaveLength(0);
+  });
+});

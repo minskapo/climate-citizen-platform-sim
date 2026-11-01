@@ -4,7 +4,7 @@ import { addDays } from '@shared/date';
 import type { OfflineSettings, PracticeSettings, SignatureSettings } from '../campaignSettings';
 import { fail, json, type Ctx, type Handler } from '../db';
 import { notify } from '../notify';
-import { checklistKeys, settingsOf, statusInput, statusOf, visibleTo, type CampaignRow } from './campaigns';
+import { checklistKeys, detail as campaignDetail, settingsOf, statusInput, statusOf, visibleTo, type CampaignRow } from './campaigns';
 import { getGroup } from './groups';
 import { readBody, requireUser, str } from './common';
 
@@ -336,4 +336,18 @@ export const checklistDone: Handler = async (_req, ctx, params) => {
   if (!keys.includes(params.itemId)) return fail(404, 'ITEM_NOT_FOUND', '체크리스트 항목을 찾을 수 없어요');
   await ctx.db.run("UPDATE participations SET checklist_json = json_set(checklist_json, '$.' || json_quote(?), json('true')) WHERE id = ?", params.itemId, p.id);
   return json({ ok: true });
+};
+
+/** GET /api/me/participations — 내 참여 목록: 캠페인 상세(내 상태 · 미션 포함), 최근 신청순. 초안 캠페인은 제외. */
+export const myParticipations: Handler = async (_req, ctx) => {
+  const uid = requireUser(ctx);
+  if (uid instanceof Response) return uid;
+  const rows = await ctx.db.all<ParticipationRow>("SELECT * FROM participations WHERE user_id = ? AND state <> 'cancelled' ORDER BY created_at DESC, id DESC LIMIT 100", uid);
+  const items = [];
+  for (const p of rows) {
+    const c = await loadCampaignRow(ctx, p.campaign_id);
+    if (!c || c.publish === 'draft') continue;
+    items.push(await campaignDetail(ctx, c));
+  }
+  return json({ items });
 };

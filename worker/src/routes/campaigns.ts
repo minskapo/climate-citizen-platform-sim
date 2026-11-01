@@ -226,7 +226,7 @@ async function countsOf(ctx: Ctx, r: CampaignRow, settings: CampaignSettings) {
   return { participants: a.n, waitlisted: w.n, seatsTaken: taken, capacity, seatsLeft: capacity == null ? null : Math.max(0, capacity - taken), subscribers: sub.n };
 }
 
-async function detail(ctx: Ctx, r: CampaignRow) {
+export async function detail(ctx: Ctx, r: CampaignRow) {
   const st = statusOf(ctx, r);
   const settings = settingsOf(r);
   const mine = ctx.userId

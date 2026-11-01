@@ -1,0 +1,23 @@
+.about { display: flex; flex-direction: column; gap: 56px; padding: 48px 0 80px; }
+.about-hero { display: grid; gap: 16px; }
+.about-eyebrow { color: var(--c-green); font-weight: 600; font-size: var(--fs-14); }
+.about-hero h1 { font-size: 40px; line-height: 1.25; letter-spacing: -0.02em; }
+.about-lead { color: var(--c-text-sub); font-size: var(--fs-18); }
+.about-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.about-sec h2 { font-size: var(--fs-24); margin-bottom: 8px; }
+.about-sub { color: var(--c-text-sub); margin-bottom: 16px; }
+.about-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.about-grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; list-style: none; padding: 0; }
+.about .card { display: grid; gap: 8px; align-content: start; }
+.about .card h3 { font-size: var(--fs-18); }
+.about .card p, .about .card small { color: var(--c-text-sub); font-size: var(--fs-14); }
+.about .card .chip { justify-self: start; }
+.about-no { color: var(--c-green); font-size: var(--fs-20); }
+.about-igt { justify-items: start; padding: 32px; }
+.about-back { margin-top: 16px; }
+@media (max-width: 1199px) { .about-grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+  .about { gap: 40px; padding-top: 24px; }
+  .about-hero h1 { font-size: 28px; }
+  .about-grid3, .about-grid4 { grid-template-columns: 1fr; }
+}

@@ -179,3 +179,16 @@ describe('groups', () => {
     expect((await h.call('GET', `/api/groups/${g}/campaigns/${foreign}/participants`, asUser(owner))).status).toBe(404);
   });
 });
+
+describe('groups mine filter', () => {
+  test('mine=1 lists only my joined groups', async () => {
+    const { h, group } = await setup();
+    const owner = await user(h, '모임장2');
+    const other = await user(h, '둘러보는이');
+    const gid = await group(owner);
+    await group(other);
+    const r = await (await h.call('GET', '/api/groups?mine=1', as(owner))).json();
+    expect(r.items.map((g: { id: string }) => g.id)).toEqual([gid]);
+    expect((await (await h.call('GET', '/api/groups?mine=1', {})).json()).items).toEqual([]);
+  });
+});

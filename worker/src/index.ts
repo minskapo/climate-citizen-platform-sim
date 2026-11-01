@@ -20,7 +20,7 @@ import { adminCloseGroup, adminExport, adminGroups, adminHome, adminParticipants
 import { simExport, simReset } from './routes/simData';
 import { createUser, getMe, listUsers, patchMe } from './routes/users';
 import {
-  cancelParticipation, checklistDone, getParticipation, participate, pauseParticipation, putReminder, quitParticipation,
+  cancelParticipation, checklistDone, getParticipation, myParticipations, participate, pauseParticipation, putReminder, quitParticipation,
 } from './routes/participations';
 import { listRecords, putRecord, todayCount } from './routes/records';
 import { attend, attendManual, getAttendanceCode, unattend } from './routes/attendance';
@@ -92,6 +92,7 @@ export const routes: Route[] = [
   { method: 'GET', pattern: '/api/campaigns/:id/today-count', handler: todayCount },
   { method: 'GET', pattern: '/api/campaigns/:id/attendance-code', handler: getAttendanceCode },
   { method: 'POST', pattern: '/api/campaigns/:id/attend', handler: attend },
+  { method: 'GET', pattern: '/api/me/participations', handler: myParticipations },
   { method: 'GET', pattern: '/api/participations/:id', handler: getParticipation },
   { method: 'POST', pattern: '/api/participations/:id/cancel', handler: cancelParticipation },
   { method: 'POST', pattern: '/api/participations/:id/pause', handler: pauseParticipation },

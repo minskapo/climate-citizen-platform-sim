@@ -12,6 +12,10 @@ import { GroupManage } from './features/groups/GroupManage';
 import { PostPage } from './features/groups/PostPage';
 import { CampaignListPage } from './features/campaigns/CampaignListPage';
 import { CampaignDetailPage } from './features/campaigns/CampaignDetailPage';
+import { HomePage } from './features/home/HomePage';
+import { AboutPage } from './features/about/AboutPage';
+import { MePage } from './features/me/MePage';
+import { AccountSettings } from './features/me/AccountSettings';
 import { CampaignPostPage } from './features/campaigns/CampaignPostPage';
 
 /**
@@ -19,7 +23,7 @@ import { CampaignPostPage } from './features/campaigns/CampaignPostPage';
  * HashRouter라 주소는 /#/campaigns 처럼 된다.
  */
 export const platformRoutes: RouteObject[] = [
-  { path: '/', element: <Placeholder title="홈" /> },
+  { path: '/', element: <HomePage /> },
   { path: '/campaigns', element: <CampaignListPage /> },
   { path: '/campaigns/:id', element: <CampaignDetailPage /> },
   { path: '/campaigns/:id/posts/:postId', element: <CampaignPostPage /> },
@@ -29,9 +33,9 @@ export const platformRoutes: RouteObject[] = [
   { path: '/groups/:id/manage', element: <GroupManage /> },
   { path: '/groups/:id/posts/:postId', element: <PostPage /> },
   { path: '/calculator', element: <CalculatorPage /> },
-  { path: '/me', element: <Placeholder title="내 활동" /> },
-  { path: '/me/settings', element: <Placeholder title="계정 설정" /> },
-  { path: '/about', element: <Placeholder title="소개" /> },
+  { path: '/me', element: <MePage /> },
+  { path: '/me/settings', element: <AccountSettings /> },
+  { path: '/about', element: <AboutPage /> },
   { path: '/signup', element: <SignupPage /> },
   { path: '/login', element: <LoginPicker /> },
   { path: '/onboarding/*', element: <OnboardingFlow /> },
