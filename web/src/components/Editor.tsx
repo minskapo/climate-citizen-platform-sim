@@ -100,6 +100,7 @@ export function Editor({ initial, categories, allowNotice, attachable = true, su
         <span className="field-label">내용</span>
         <textarea className="input editor-body" rows={8} value={body} placeholder="내용을 써 주세요. 빈 줄로 단락을 나눠요. 외부 링크는 주소를 그대로 붙여 넣으면 링크가 돼요." onChange={(e) => setBody(e.target.value)} />
       </label>
+      {!attachable && <p className="field-hint">첨부는 새 글에서만 바꿀 수 있어요</p>}
       {attachable && (
         <div className="editor-att">
           <div className="editor-att-btns">

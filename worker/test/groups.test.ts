@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { harness, type Harness } from './helpers/client';
+import { as as asUser, on, setup, user as mkUser } from './helpers/campaign';
 
 async function user(h: Harness, nickname: string) {
   return (await (await h.call('POST', '/api/users', { body: { nickname, consents: { terms: true } } })).json()).id as string;
@@ -126,5 +127,55 @@ describe('groups', () => {
     expect(r.items.map((m: { role: string }) => m.role)).toEqual(['pending', 'owner']);
     const q = await (await h.call('GET', `/api/groups/${g}/members?q=${encodeURIComponent('신청')}`, as(owner))).json();
     expect(q.items).toHaveLength(1);
+  });
+
+  test('member list: plain member gets 403', async () => {
+    const h = harness();
+    const owner = await user(h, '모임장'), m = await user(h, '멤버');
+    const g = await group(h, owner);
+    await h.call('POST', `/api/groups/${g}/join`, as(m));
+    expect((await h.call('GET', `/api/groups/${g}/members`, as(m))).status).toBe(403);
+  });
+
+  test('group view has staffCount; campaigns filter by hostGroupId', async () => {
+    const { h, adminId, practice, group: mkGroup } = await setup();
+    const owner = await mkUser(h, '모임장'), s = await mkUser(h, '운영진');
+    const g1 = await mkGroup(owner), g2 = await mkGroup(owner);
+    await h.call('POST', `/api/groups/${g1}/join`, asUser(s));
+    await h.call('POST', `/api/groups/${g1}/members/${s}`, { ...asUser(owner), body: { action: 'staff' } });
+    expect((await (await h.call('GET', `/api/groups/${g1}`, asUser(s))).json()).staffCount).toBe(1);
+    const c1 = await practice({}, { hostGroupId: g1 });
+    await practice({}, { hostGroupId: g2 });
+    await practice();
+    const r = await (await h.call('GET', `/api/campaigns?hostGroupId=${g1}`, asUser(adminId, { 'X-Role': 'admin' }))).json();
+    expect(r.items.map((c: { id: string }) => c.id)).toEqual([c1]);
+  });
+
+  test('host-group participants: staff only, hides cancelled and waitlisted, host must match', async () => {
+    const { h, practice, offline, group: mkGroup } = await setup();
+    const owner = await mkUser(h, '모임장'), m = await mkUser(h, '멤버');
+    const a = await mkUser(h, '참가A'), b = await mkUser(h, '참가B'), c = await mkUser(h, '참가C');
+    const g = await mkGroup(owner), other = await mkGroup(owner);
+    await h.call('POST', `/api/groups/${g}/join`, asUser(m));
+    const cid = await offline({}, { hostGroupId: g }); // capacity 1 + waitlist
+    const day = '2027-01-10';
+    const pa = (await (await h.call('POST', `/api/campaigns/${cid}/participate`, { ...on(a, day), body: { answers: {}, consents: {} } })).json()).participation.id;
+    await h.call('POST', `/api/campaigns/${cid}/participate`, { ...on(b, day), body: { answers: {}, consents: {} } }); // waitlisted, promoted after A cancels
+    const pc = await h.call('POST', `/api/campaigns/${cid}/participate`, { ...on(c, day), body: { answers: {}, consents: {} } });
+    expect(pc.status).toBe(201);
+    expect((await h.call('POST', `/api/participations/${pa}/cancel`, { ...on(a, day), body: {} })).status).toBe(200);
+    const url = `/api/groups/${g}/campaigns/${cid}/participants`;
+    expect((await h.call('GET', url, asUser(m))).status).toBe(403);
+    expect((await h.call('GET', url, asUser(m, { 'X-Role': 'staff', 'X-Staff-Group': other }))).status).toBe(403);
+    const ok = await h.call('GET', url, asUser(owner));
+    expect(ok.status).toBe(200);
+    const names = (await ok.json()).items.map((x: { nickname: string }) => x.nickname);
+    expect(names).not.toContain('참가A'); // cancelled
+    expect(names).not.toContain('참가C'); // still waitlisted
+    expect(names).toContain('참가B'); // promoted when A cancelled
+    const sim = await h.call('GET', url, asUser(m, { 'X-Role': 'staff', 'X-Staff-Group': g }));
+    expect(sim.status).toBe(200);
+    const foreign = await practice({}, { hostGroupId: other });
+    expect((await h.call('GET', `/api/groups/${g}/campaigns/${foreign}/participants`, asUser(owner))).status).toBe(404);
   });
 });

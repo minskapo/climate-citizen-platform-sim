@@ -120,6 +120,7 @@ async function groupView(ctx: Ctx, g: GroupRow) {
   const base = { id: g.id, name: g.name, sido: g.sido, sigungu: g.sigungu, joinPolicy: g.join_policy, myRole: role, closed: !!g.closed_at };
   if (g.join_policy === 'private' && !isMember) return base; // 비공개: 이름·지역만
   const count = await ctx.db.first<{ n: number }>("SELECT COUNT(*) n FROM group_members WHERE group_id = ? AND role IN ('owner','staff','member')", g.id);
+  const staffN = await ctx.db.first<{ n: number }>("SELECT COUNT(*) n FROM group_members WHERE group_id = ? AND role = 'staff'", g.id);
   const weekAgo = new Date(Date.parse(ctx.simDate) - 7 * DAY_MS).toISOString().slice(0, 10);
   const posts = await ctx.db.first<{ n: number }>(
     "SELECT COUNT(*) n FROM posts WHERE board_type = 'group' AND board_id = ? AND hidden = 0 AND sim_date > ? AND sim_date <= ?",
@@ -131,6 +132,7 @@ async function groupView(ctx: Ctx, g: GroupRow) {
     createdAt: g.created_at,
     categories: JSON.parse(g.categories_json) as string[],
     memberCount: count?.n ?? 0,
+    staffCount: staffN?.n ?? 0,
     newPostsThisWeek: posts?.n ?? 0,
     campaign: await campaignBadge(ctx, g.id),
     chatLink: isMember ? g.chat_link : undefined, // 단톡방 링크는 멤버에게만

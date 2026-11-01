@@ -789,10 +789,12 @@ export const listCampaigns: Handler = async (req, ctx) => {
   const type = sp.get('type'), mode = sp.get('mode'), region = sp.get('region'), status = sp.get('status');
   const q = (sp.get('q') ?? '').trim().toLowerCase();
   const hero = sp.get('hero') === '1';
+  const hostGroupId = sp.get('hostGroupId');
 
   const base = rows
     .map((r) => ({ r, st: statusOf(ctx, r), settings: settingsOf(r), g: r.host_group_id ? gmap.get(r.host_group_id) : undefined }))
     .filter(({ r, st }) => visibleTo(ctx, r, st))
+    .filter(({ r }) => !hostGroupId || r.host_group_id === hostGroupId)
     .filter(({ r }) => !type || r.type === type)
     .filter(({ settings }) => !mode || settings.mode === mode)
     .filter(({ g }) => !region || (g?.sido || '전국·온라인') === region)

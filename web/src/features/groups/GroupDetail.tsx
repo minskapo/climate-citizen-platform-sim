@@ -18,14 +18,8 @@ interface GCampaign { id: string; type: string; title: string; status: string; s
 const TYPE_LABEL: Record<string, string> = { practice: '실천', signature: '서명', offline: '오프라인 모임' };
 
 export async function loadGroupCampaigns(groupId: string): Promise<GCampaign[]> {
-  const out: GCampaign[] = [];
-  let cursor: string | null = '0';
-  for (let i = 0; i < 5 && cursor !== null; i++) {
-    const r: { items: GCampaign[]; nextCursor: string | null } = await api(`/api/campaigns?cursor=${cursor}`, { quiet: true });
-    out.push(...r.items.filter((c) => c.host?.id === groupId));
-    cursor = r.nextCursor;
-  }
-  return out;
+  const r = await api<{ items: GCampaign[] }>(`/api/campaigns?hostGroupId=${encodeURIComponent(groupId)}`, { quiet: true });
+  return r.items;
 }
 
 export function campaignWhen(c: { type: string; schedule: Schedule }): string {
@@ -243,6 +237,7 @@ export function GroupDetail() {
               <h2>모임 정보</h2>
               <dl className="ginfo">
                 <dt>지역</dt><dd>{region}</dd>
+                <dt>운영진</dt><dd>모임장{g.staffCount ? ` 외 ${g.staffCount}명` : ''}</dd>
                 <dt>가입 방식</dt><dd>{POLICY_LABEL[g.joinPolicy]}</dd>
                 <dt>단톡방</dt><dd>{member ? (g.chatLink ? <a href={g.chatLink} target="_blank" rel="noopener noreferrer">{g.chatLink.replace(/^https?:\/\//, '')} ↗</a> : '연결 안 됨') : '가입 후 공개'}</dd>
               </dl>
