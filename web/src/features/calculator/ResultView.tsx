@@ -22,7 +22,7 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
 }
 
 /** 결과: 총량 · 평균/목표/한국 평균 · 탄소 예산선 · 분야별 + 오른쪽 저장/가입 카드. */
-export interface RecCampaign { id: string; title: string; participantCount: number; status: string }
+export interface RecCampaign { id: string; title: string; participantCount: number; status: string; matched?: boolean }
 
 export function ResultView({ result, avg, guest, campaign, rec, policies, policyCounts, onContinue, onRetry, onLeave, onSignup }: {
   result: CalcResult;
@@ -92,7 +92,7 @@ export function ResultView({ result, avg, guest, campaign, rec, policies, policy
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                 <Chip tone="solid">{rec.status === 'recruiting' ? '모집 중' : '모집 예정'}</Chip>
-                <Chip tone="yellow">{SECTOR_NAME[sectors[0][0]]}이(가) 가장 많은 분께 추천</Chip>
+                <Chip tone="yellow">{rec.matched ? `${SECTOR_NAME[sectors[0][0]]}이(가) 가장 많은 분께 추천` : '지금 참여할 수 있는 캠페인'}</Chip>
               </div>
               <b>{rec.title}</b>
               <p className="calc-lead" style={{ fontSize: 13 }}>이 결과를 출발점으로 4주 동안 함께 줄여 봐요 · {rec.participantCount.toLocaleString('ko-KR')}명 참여</p>

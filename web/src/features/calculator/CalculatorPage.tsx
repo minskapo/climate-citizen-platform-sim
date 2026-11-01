@@ -109,7 +109,7 @@ export function CalculatorPage() {
       void total;
       const top = SECTOR_NAME[SECTOR_KEYS.map((k) => [k, result.sectors[k]] as const).sort((a, b) => b[1] - a[1])[0][0]];
       const hit = list.find((c) => `${c.title} ${c.summary ?? ''}`.includes(top));
-      setRec(hit ?? list[0] ?? null);
+      setRec(hit ? { ...hit, matched: true } : list[0] ? { ...list[0], matched: false } : null);
     } catch { setRec(null); }
   };
   const refreshAgg = () => api<Agg>('/api/aggregates/calculator', { quiet: true }).then(setAgg).catch(() => undefined);
@@ -153,7 +153,7 @@ export function CalculatorPage() {
 
   const restart = () => {
     localId.current = newLocalId();
-    setM(null); setPicked([]); setSocial([]); setPolicies([]); setStage('q');
+    setM(null); setRec(null); setPicked([]); setSocial([]); setPolicies([]); setStage('q');
     setIdx(ALL.findIndex((s) => s.kind === 'q'));
   };
 

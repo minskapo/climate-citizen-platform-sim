@@ -180,4 +180,23 @@ describe('calculator', () => {
     renderAt('/calculator');
     expect(screen.getByText('가입 없이 · 결과는 가입 후 저장')).toBeInTheDocument();
   });
+
+  test('fallback recommended campaign does not claim a sector match', async () => {
+    const { api } = await import('../../lib/api');
+    (api as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (path: string, init?: { body?: Record<string, unknown> }) => {
+      calls.push({ path, body: init?.body });
+      if (path === '/api/measurements') {
+        const { ans: _a, ...result } = calculate(init!.body!.answers as never);
+        return { measurement: { id: 'm1', result, policies: [] } };
+      }
+      if (path.startsWith('/api/campaigns?status=recruiting')) return { items: [{ id: 'r2', title: '동네 걷기', summary: '', participantCount: 5 }] };
+      if (path.startsWith('/api/campaigns?')) return { items: [] };
+      if (path === '/api/aggregates/calculator') return { count: 1, avg: null };
+      return {};
+    });
+    renderAt('/calculator');
+    await toResult({ [CAR]: '60' });
+    expect(await screen.findByText('지금 참여할 수 있는 캠페인')).toBeInTheDocument();
+    expect(screen.queryByText(/가장 많은 분께 추천/)).not.toBeInTheDocument();
+  });
 });
