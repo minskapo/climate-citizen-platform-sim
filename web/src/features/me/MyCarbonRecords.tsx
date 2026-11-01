@@ -4,7 +4,7 @@ import { CONFIG, ACTIONS } from '@shared/calculator';
 import { koShort } from '@shared/date';
 import { fmt } from '../calculator/BudgetLine';
 import { useCalcAggregate, useMeasurements, type MeasurementFull } from '../home/data';
-import { Spinner } from '../../components/ui';
+import { LoadError, Spinner } from '../../components/ui';
 
 const PLACE: Record<string, string> = { home: '홈', menu: '상단 메뉴', campaign: '캠페인' };
 const actionName = (id: string) => ACTIONS.find((a) => a.id === id)?.name ?? id;
@@ -27,10 +27,10 @@ function Chosen({ m }: { m: MeasurementFull }) {
 
 /** E 나의 탄소 기록: 최근 측정 · 평균 비교 · 측정 목록 · 고른 감축 행동 · 고른 정책 */
 export function MyCarbonRecords() {
-  const [ms] = useMeasurements();
+  const [ms, retry, failed] = useMeasurements();
   const [agg] = useCalcAggregate();
   const [all, setAll] = useState(false);
-  if (ms === null) return <section className="card mcr"><h2>나의 탄소 기록</h2><Spinner /></section>;
+  if (ms === null) return <section className="card mcr"><h2>나의 탄소 기록</h2>{failed ? <LoadError onRetry={retry} /> : <Spinner />}</section>;
   const latest = ms[0];
   const T = CONFIG.TARGET_2030;
   return (

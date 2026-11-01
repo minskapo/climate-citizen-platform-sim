@@ -4,7 +4,7 @@ import { addDays } from '@shared/date';
 import type { OfflineSettings, PracticeSettings, SignatureSettings } from '../campaignSettings';
 import { fail, json, type Ctx, type Handler } from '../db';
 import { notify } from '../notify';
-import { checklistKeys, detail as campaignDetail, settingsOf, statusInput, statusOf, visibleTo, type CampaignRow } from './campaigns';
+import { checklistKeys, IGT_NAME, missionsByCampaign, scheduleOf, settingsOf, statusInput, statusOf, visibleTo, type CampaignRow } from './campaigns';
 import { getGroup } from './groups';
 import { readBody, requireUser, str } from './common';
 
@@ -338,16 +338,36 @@ export const checklistDone: Handler = async (_req, ctx, params) => {
   return json({ ok: true });
 };
 
-/** GET /api/me/participations — 내 참여 목록: 캠페인 상세(내 상태 · 미션 포함), 최근 신청순. 초안 캠페인은 제외. */
+const MINE_CAP = 30;
+
+/** GET /api/me/participations — 내 참여 목록(가벼운 요약): 최근 신청순 최대 30개, 쿼리 2번(참여+캠페인 조인, 미션). 초안 캠페인 제외. */
 export const myParticipations: Handler = async (_req, ctx) => {
   const uid = requireUser(ctx);
   if (uid instanceof Response) return uid;
-  const rows = await ctx.db.all<ParticipationRow>("SELECT * FROM participations WHERE user_id = ? AND state <> 'cancelled' ORDER BY created_at DESC, id DESC LIMIT 100", uid);
-  const items = [];
-  for (const p of rows) {
-    const c = await loadCampaignRow(ctx, p.campaign_id);
-    if (!c || c.publish === 'draft') continue;
-    items.push(await campaignDetail(ctx, c));
-  }
+  const rows = await ctx.db.all<ParticipationRow & CampaignRow & { pid: string; pstate: string; pcreated: string; host_name: string | null }>(
+    `SELECT c.*, p.id AS pid, p.state AS pstate, p.created_at AS pcreated, p.companions, p.waitlist_no, p.answers_json, p.start_measurement_id,
+            p.paused_from, p.paused_until, p.pause_used, g.name AS host_name
+       FROM participations p JOIN campaigns c ON c.id = p.campaign_id LEFT JOIN groups g ON g.id = c.host_group_id
+      WHERE p.user_id = ? AND p.state <> 'cancelled' AND c.publish <> 'draft'
+      ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
+    uid, MINE_CAP,
+  );
+  const practiceIds = [...new Set(rows.filter((r) => r.type === 'practice').map((r) => r.id))];
+  const missions = await missionsByCampaign(ctx, practiceIds);
+  const items = rows.map((r) => ({
+    campaign: {
+      id: r.id, type: r.type, title: r.title, summary: r.summary, imageFileId: r.image_file_id,
+      host: r.host_name ? { type: 'group', id: r.host_group_id, name: r.host_name } : { type: 'igt', name: IGT_NAME },
+      hostGroupId: r.host_group_id, schedule: scheduleOf(r), settings: settingsOf(r),
+      publish: r.publish, showUpcoming: !!r.show_upcoming, hero: !!r.hero, createdAt: r.created_at,
+    },
+    status: statusOf(ctx, r),
+    missions: missions.get(r.id) ?? [],
+    myParticipation: {
+      id: r.pid, state: r.pstate, companions: r.companions, waitlistNo: r.waitlist_no, answers: JSON.parse(r.answers_json),
+      createdAt: r.pcreated, startMeasurementId: r.start_measurement_id, pausedFrom: r.paused_from, pausedUntil: r.paused_until,
+      pauseUsed: !!r.pause_used, paused: !!r.paused_from && !!r.paused_until && ctx.simDate >= r.paused_from && ctx.simDate <= r.paused_until,
+    },
+  }));
   return json({ items });
 };

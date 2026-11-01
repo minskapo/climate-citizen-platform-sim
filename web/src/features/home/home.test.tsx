@@ -104,3 +104,20 @@ describe('home', () => {
     expect(screen.queryByText('1.5도 계산기 시작하기')).toBeNull();
   });
 });
+
+describe('home load errors', () => {
+  test('records failure shows retry instead of a spinner', async () => {
+    const { api } = await import('../../lib/api');
+    simStore.set({ role: 'member', userId: 'u1', nickname: '햇빛부자' });
+    const d = campaignDetail();
+    myParts = [{ ...d, status: 'running', myParticipation: { id: 'p1', state: 'applied', paused: false } }];
+    const impl = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path: string, ...rest: unknown[]) => {
+      if (path.endsWith('/records')) throw new Error('x');
+      return (impl as (p: string, ...r: unknown[]) => Promise<never>)(path, ...rest);
+    });
+    open();
+    expect(await screen.findByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    vi.mocked(api).mockImplementation(impl);
+  });
+});

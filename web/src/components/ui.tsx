@@ -61,4 +61,14 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   );
 }
 
+/** 불러오지 못했을 때: 안내와 다시 시도 */
+export function LoadError({ onRetry, text = '불러오지 못했어요' }: { onRetry(): void; text?: string }) {
+  return (
+    <div className="load-error" role="alert">
+      <span>{text}</span>
+      <button type="button" className="btn btn-outline btn-sm" onClick={onRetry}>다시 시도</button>
+    </div>
+  );
+}
+
 export { cls };

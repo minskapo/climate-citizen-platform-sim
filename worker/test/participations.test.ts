@@ -277,3 +277,30 @@ describe('my participations', () => {
     expect((await (await h.call('GET', '/api/me/participations', on(other, '2027-02-10'))).json()).items).toHaveLength(0);
   });
 });
+
+describe('my participations is light', () => {
+  test('8 participations in one response with a bounded number of db calls', async () => {
+    const { h, practice } = await setup();
+    const u = await user(h, '많이참여');
+    for (let i = 0; i < 8; i++) {
+      const id = await practice();
+      expect((await h.call('POST', `/api/campaigns/${id}/participate`, { ...on(u, '2027-01-10'), body: { answers: {}, consents: {} } })).status).toBe(201);
+    }
+    let calls = 0;
+    const db = h.db;
+    const counted = {
+      ...db,
+      all: (...a: Parameters<typeof db.all>) => { calls++; return db.all(...a); },
+      first: (...a: Parameters<typeof db.first>) => { calls++; return db.first(...a); },
+      run: (...a: Parameters<typeof db.run>) => { calls++; return db.run(...a); },
+    } as typeof db;
+    const { handle } = await import('../src/index');
+    const { issueToken } = await import('../src/auth');
+    const token = await issueToken(h.env.TOKEN_SECRET, Date.now());
+    const res = await handle(new Request('https://x.test/api/me/participations', { headers: { 'X-Sim-Token': token, 'X-User-Id': u, 'X-Sim-Date': '2027-02-10', 'X-Sim-Time': '12:00' } }), h.env, counted);
+    const b = await res.json() as { items: Array<{ missions: unknown[] }> };
+    expect(b.items).toHaveLength(8);
+    expect(b.items[0].missions.length).toBeGreaterThan(0);
+    expect(calls).toBeLessThanOrEqual(8);
+  });
+});

@@ -6,7 +6,7 @@ import { ButtonLink, Button, Chip } from '../../components/ui';
 import type { CampaignListItem } from '../campaigns/types';
 import type { GroupView } from '../groups/types';
 import { CampaignSection } from './CampaignSection';
-import { useCalcAggregate, useMeasurements } from './data';
+import { useCalcAggregate, useMeasurements, useMyCampaigns } from './data';
 import { GroupSection } from './GroupSection';
 import { GuestHero, MemberHero } from './Hero';
 import { MyGroupNews } from './MyGroupNews';
@@ -23,13 +23,21 @@ async function loadCampaigns(): Promise<CampaignListItem[]> {
   return out;
 }
 
+/** 이미 참여한 캠페인은 빼고 보여 준다. */
+function withoutJoined(list: CampaignListItem[] | null, mine: Array<{ campaign: { id: string } }> | null): CampaignListItem[] | null {
+  if (!list || !mine) return list;
+  const joined = new Set(mine.map((d) => d.campaign.id));
+  return list.filter((c) => !joined.has(c.id));
+}
+
 /** A · A-1 · A-2 홈 */
 export function HomePage() {
   const sim = useSim();
   const signed = sim.role !== 'guest' && !!sim.userId;
   const [camps, setCamps] = useState<CampaignListItem[] | null>(null);
   const [groups, setGroups] = useState<GroupView[] | null>(null);
-  const [mine] = useMyGroups();
+  const [mineGroups] = useMyGroups();
+  const [myCamps, retryCamps, campsFailed] = useMyCampaigns();
   const [ms] = useMeasurements();
   const [agg] = useCalcAggregate();
   const [collab, setCollab] = useState(false);
@@ -43,9 +51,9 @@ export function HomePage() {
 
   return (
     <div className="home">
-      {signed ? <MemberHero suggested={camps} /> : <GuestHero />}
-      {signed && <MyGroupNews groups={mine} />}
-      <CampaignSection items={camps} nickname={signed ? sim.nickname : null} />
+      {signed ? <MemberHero suggested={withoutJoined(camps, myCamps)} mine={myCamps} mineFailed={campsFailed} retryMine={retryCamps} /> : <GuestHero />}
+      {signed && <MyGroupNews groups={mineGroups} />}
+      <CampaignSection items={withoutJoined(camps, myCamps)} />
       <PopularPosts />
       <GroupSection groups={groups} member={signed} />
       <section className="container hsec" aria-label="모임 열기 안내">

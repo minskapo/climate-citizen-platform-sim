@@ -293,3 +293,5 @@ img { max-width: 100%; display: block; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.load-error { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--c-danger-tint); color: var(--c-danger); font-size: var(--fs-14); }

@@ -5,7 +5,7 @@ import { missionForDate, missionLabel } from '@shared/missions';
 import { api } from '../../lib/api';
 import { useSim } from '../../lib/sim';
 import { NotificationsPanel } from '../../components/NotificationsPanel';
-import { ButtonLink, Chip, EmptyState, Spinner } from '../../components/ui';
+import { ButtonLink, Chip, EmptyState, LoadError, Spinner } from '../../components/ui';
 import { periodLabel, statusFor, STATUS_LABEL, STATUS_TONE, type CampaignDetail } from '../campaigns/types';
 import type { RecordsResponse } from '../practice/types';
 import { runningPractice } from '../home/Hero';
@@ -70,8 +70,8 @@ export function MePage() {
   const sim = useSim();
   const [sp, setSp] = useSearchParams();
   const tab = sp.get('tab') === 'notifications' ? 'notifications' : 'activity';
-  const [mine] = useMyCampaigns();
-  const [groups] = useMyGroups();
+  const [mine, retryMine, mineFailed] = useMyCampaigns();
+  const [groups, retryGroups, groupsFailed] = useMyGroups();
   const [recs, setRecs] = useState<Rec>({});
   const signed = sim.role !== 'guest' && !!sim.userId;
 
@@ -120,7 +120,7 @@ export function MePage() {
             {running && <MissionHero d={running} rec={recs[running.myParticipation!.id]} />}
             <section className="card" aria-label="참여 중인 캠페인">
               <div className="me-sec-head"><h2>참여 중인 캠페인</h2><Link to="/campaigns">전체 보기 →</Link></div>
-              {mine === null ? <Spinner /> : current.length === 0
+              {mine === null ? (mineFailed ? <LoadError onRetry={retryMine} /> : <Spinner />) : current.length === 0
                 ? <p className="me-empty">참여 중인 캠페인이 없어요. <Link to="/campaigns">캠페인 둘러보기</Link></p>
                 : (
                   <ul className="me-rows">
@@ -144,13 +144,13 @@ export function MePage() {
             </section>
             <section className="card" aria-label="가입한 모임">
               <div className="me-sec-head"><h2>가입한 모임</h2><Link to="/groups">전체 보기 →</Link></div>
-              {groups === null ? <Spinner /> : groups.length === 0
+              {groups === null ? (groupsFailed ? <LoadError onRetry={retryGroups} /> : <Spinner />) : groups.length === 0
                 ? <p className="me-empty">가입한 모임이 없어요. <Link to="/groups">모임 둘러보기</Link></p>
                 : <ul className="me-rows">{groups.map((g) => <GroupRow key={g.id} g={g} />)}</ul>}
             </section>
             <section className="card" aria-label="지난 캠페인">
               <div className="me-sec-head"><h2>지난 캠페인</h2></div>
-              {mine === null ? <Spinner /> : past.length === 0
+              {mine === null ? (mineFailed ? <LoadError onRetry={retryMine} /> : <Spinner />) : past.length === 0
                 ? <p className="me-empty">마친 캠페인이 아직 없어요.</p>
                 : (
                   <ul className="me-rows">

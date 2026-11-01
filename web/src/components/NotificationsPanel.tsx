@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { koShort } from '@shared/date';
 import { api } from '../lib/api';
 import { syncNotifications } from '../lib/notifications';
-import { EmptyState, Spinner } from './ui';
+import { EmptyState, LoadError, Spinner } from './ui';
 
 export interface Notif { id: string; kind: string; text: string; link: string; read: boolean; createdAt: string; simDate: string | null }
 
@@ -23,9 +23,12 @@ async function resolve(link: string): Promise<string> {
 export function NotificationsPanel() {
   const nav = useNavigate();
   const [items, setItems] = useState<Notif[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [tries, setTries] = useState(0);
   const marked = useRef(false);
   useEffect(() => {
     let alive = true;
+    setFailed(false);
     api<{ items: Notif[]; unread: number }>('/api/notifications', { quiet: true })
       .then(async (r) => {
         if (!alive) return;
@@ -38,9 +41,10 @@ export function NotificationsPanel() {
           } catch { /* 다음에 열 때 다시 읽음 처리 */ marked.current = false; }
         }
       })
-      .catch(() => alive && setItems([]));
+      .catch(() => { if (alive) { setItems(null); setFailed(true); } });
     return () => { alive = false; };
-  }, []);
+  }, [tries]);
+  if (failed) return <LoadError text="알림을 불러오지 못했어요" onRetry={() => setTries((x) => x + 1)} />;
   if (items === null) return <Spinner />;
   if (items.length === 0) return <EmptyState title="새 알림이 없어요">미션 알림, 공지, 댓글 소식이 생기면 여기에 모여요.</EmptyState>;
   return (

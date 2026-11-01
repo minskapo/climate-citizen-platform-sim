@@ -119,6 +119,16 @@ export async function missionsOf(ctx: Ctx, campaignId: string): Promise<Mission[
   return rows.map(missionView);
 }
 
+/** Missions of several campaigns in one query (grouped by campaign id). */
+export async function missionsByCampaign(ctx: Ctx, ids: string[]): Promise<Map<string, Mission[]>> {
+  const out = new Map<string, Mission[]>();
+  if (!ids.length) return out;
+  const rows = await ctx.db.all<MissionRow & { campaign_id: string }>(
+    `SELECT * FROM missions WHERE campaign_id IN (${ids.map(() => '?').join(',')}) ORDER BY position, round, date, id`, ...ids);
+  for (const r of rows) out.set(r.campaign_id, [...(out.get(r.campaign_id) ?? []), missionView(r)]);
+  return out;
+}
+
 // ---- views ------------------------------------------------------------------
 
 async function campaignView(ctx: Ctx, r: CampaignRow, showExact: boolean) {

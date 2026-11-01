@@ -11,17 +11,19 @@ export interface MeasurementFull {
 export interface CalcAggregate { count: number; avg: number | null; policyCounts: Record<string, number> }
 
 /** 모든 화면이 같은 방식으로 불러오고, 실패하면 빈 목록으로 둔다. */
-function useLoad<T>(path: string | null, pick: (r: never) => T, deps: unknown[] = []): [T | null, () => void] {
+function useLoad<T>(path: string | null, pick: (r: never) => T, deps: unknown[] = []): [T | null, () => void, boolean] {
   const [v, setV] = useState<T | null>(null);
+  const [failed, setFailed] = useState(false);
   const [n, setN] = useState(0);
   useEffect(() => {
+    setFailed(false);
     if (!path) { setV(null); return; }
     let alive = true;
-    api<never>(path, { quiet: true }).then((r) => alive && setV(pick(r))).catch(() => alive && setV(null));
+    api<never>(path, { quiet: true }).then((r) => alive && setV(pick(r))).catch(() => { if (alive) { setV(null); setFailed(true); } });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, n, ...deps]);
-  return [v, useCallback(() => setN((x) => x + 1), [])];
+  return [v, useCallback(() => setN((x) => x + 1), []), failed];
 }
 
 export const useSignedIn = () => {

@@ -52,6 +52,8 @@ export const syncNotifications: Handler = async (_req, ctx) => {
      WHERE p.user_id = ? AND p.state = 'applied' AND c.publish <> 'draft'`,
     uid,
   );
+  const prefs = JSON.parse((await ctx.db.first<{ settings_json: string }>('SELECT settings_json FROM users WHERE id = ?', uid))?.settings_json ?? '{}') as { reminderTime?: string; reminderOn?: boolean };
+  const userTime = typeof prefs.reminderTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(prefs.reminderTime) ? prefs.reminderTime : null;
   const offline: DueInput['offline'] = [];
   const byTime = new Map<string, DueInput['participations']>();
   for (const r of rows) {
@@ -67,8 +69,8 @@ export const syncNotifications: Handler = async (_req, ctx) => {
     const ps = settingsOf(c) as PracticeSettings;
     if (!ps.recordEnabled || !s.runStart || !s.runDays) continue;
     const rem = (JSON.parse(r.answers_json) as { reminder?: { enabled?: boolean; time?: string } }).reminder;
-    if (rem?.enabled === false) continue;
-    const time = rem?.time ?? ps.reminderTime ?? '20:00';
+    if (rem?.enabled === false || (rem?.enabled === undefined && prefs.reminderOn === false)) continue;
+    const time = rem?.time ?? userTime ?? ps.reminderTime ?? '20:00';
     const recorded = (await ctx.db.all<{ slot_date: string }>('SELECT slot_date FROM records WHERE participation_id = ?', r.id)).map((x) => x.slot_date);
     const paused = r.paused_from && r.paused_until
       ? Array.from({ length: diffDays(r.paused_from, r.paused_until) + 1 }, (_, i) => addDays(r.paused_from!, i))

@@ -5,7 +5,7 @@ import { diffDays, koRange, koShort } from '@shared/date';
 import { missionForDate, missionLabel } from '@shared/missions';
 import { api } from '../../lib/api';
 import { useSim } from '../../lib/sim';
-import { ButtonLink, Chip, Spinner } from '../../components/ui';
+import { ButtonLink, Chip, LoadError, Spinner } from '../../components/ui';
 import { fmt } from '../calculator/BudgetLine';
 import { HomeCalcCard } from '../calculator/HomeCalcCard';
 import { useFileUrl } from '../../components/useFileUrl';
@@ -13,7 +13,7 @@ import { CHECK_LABEL, type RecordsResponse } from '../practice/types';
 import { RecordForm } from '../practice/RecordForm';
 import { fieldsFor } from '../practice/usePractice';
 import { runEndOf, STATUS_LABEL, TYPE_LABEL, type CampaignDetail, type CampaignListItem } from '../campaigns/types';
-import { useCalcAggregate, useMeasurements, useMyCampaigns, type CalcAggregate, type MeasurementFull } from './data';
+import { useCalcAggregate, useMeasurements, type CalcAggregate, type MeasurementFull } from './data';
 import './home.css';
 
 export const STEPS: Record<string, string[]> = {
@@ -173,12 +173,14 @@ function RunningLeft({ d }: { d: CampaignDetail }) {
   const cycle = s.missionCycle ?? 'daily';
   const runStart = c.schedule.runStart!;
   const [rec, setRec] = useState<RecordsResponse | null>(null);
+  const [recFailed, setRecFailed] = useState(false);
   const [n, setN] = useState(0);
   const recording = s.recordEnabled !== false;
   useEffect(() => {
     if (!recording) return;
     let alive = true;
-    api<RecordsResponse>(`/api/participations/${mine.id}/records`, { quiet: true }).then((r) => alive && setRec(r)).catch(() => alive && setRec(null));
+    setRecFailed(false);
+    api<RecordsResponse>(`/api/participations/${mine.id}/records`, { quiet: true }).then((r) => alive && setRec(r)).catch(() => { if (alive) { setRec(null); setRecFailed(true); } });
     return () => { alive = false; };
   }, [mine.id, recording, sim.today, n]);
   const dayNo = diffDays(runStart, sim.today) + 1;
@@ -199,7 +201,7 @@ function RunningLeft({ d }: { d: CampaignDetail }) {
           : <RecordForm key={sim.today} participationId={mine.id} slotDate={sim.today} fields={fieldsFor(d, sim.today)} numberUnit={s.numberUnit} compact onSaved={() => setN((x) => x + 1)} />
       )}
       {recording && rec && !rec.isSlotToday && <p className="hhero-done">{rec.nextSlot ? `다음 기록일은 ${koShort(rec.nextSlot)}이에요.` : '남은 기록일이 없어요.'}</p>}
-      {recording && !rec && <Spinner />}
+      {recording && !rec && (recFailed ? <LoadError text="기록을 불러오지 못했어요" onRetry={() => setN((x) => x + 1)} /> : <Spinner />)}
       {recording && rec && (
         <div className="hhero-prog">
           <div><span>{c.schedule.runDays && c.schedule.runDays % 7 === 0 ? `${c.schedule.runDays / 7}주` : `${c.schedule.runDays}일`} 기록</span><b>{rec.progress.done} / {rec.progress.total}일{rec.progress.streak > 1 ? ` · ${rec.progress.streak}일 연속` : ''}</b></div>
@@ -215,9 +217,8 @@ function RunningLeft({ d }: { d: CampaignDetail }) {
 }
 
 /** A-2 로그인 히어로 */
-export function MemberHero({ suggested }: { suggested: CampaignListItem[] | null }) {
+export function MemberHero({ suggested, mine, mineFailed, retryMine }: { suggested: CampaignListItem[] | null; mine: CampaignDetail[] | null; mineFailed: boolean; retryMine(): void }) {
   const sim = useSim();
-  const [mine] = useMyCampaigns();
   const [ms] = useMeasurements();
   const [agg] = useCalcAggregate();
   const run = runningPractice(mine, sim.today);
@@ -225,7 +226,7 @@ export function MemberHero({ suggested }: { suggested: CampaignListItem[] | null
   return (
     <section className="container hhero" aria-label="히어로">
       <div className="card hhero-card">
-        {mine === null ? <Spinner /> : run ? <RunningLeft d={run} /> : (
+        {mine === null ? (mineFailed ? <LoadError onRetry={retryMine} /> : <Spinner />) : run ? <RunningLeft d={run} /> : (
           <div className="hhero-l">
             <p className="hhero-hello">좋은 하루예요, {sim.nickname} 님</p>
             <h1 className="hhero-title">{latest ? <>나의 1년 탄소는<br />{fmt(latest.result.total)}톤이에요</> : <>나의 1년 탄소,<br />아직 모르시나요?</>}</h1>

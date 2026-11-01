@@ -92,3 +92,17 @@ describe('notifications', () => {
     expect(row!.host_group_id).toBe(gid);
   });
 });
+
+describe('reminder default time', () => {
+  test('falls back to my account reminderTime when no per-campaign time', async () => {
+    const { h, practice } = await setup();
+    const id = await practice();
+    const u = await user(h, '시각설정');
+    await h.call('PATCH', '/api/me', { ...as(u), body: { settings: { reminderTime: '21:30' } } });
+    await h.call('POST', `/api/campaigns/${id}/participate`, { ...on(u, APPLY_DAY), body });
+    let r = await (await h.call('POST', '/api/notifications/sync', on(u, '2027-02-08', '21:00'))).json();
+    expect(r.unread).toBe(0);
+    r = await (await h.call('POST', '/api/notifications/sync', on(u, '2027-02-08', '21:40'))).json();
+    expect(r.unread).toBe(1);
+  });
+});
