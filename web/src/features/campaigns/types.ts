@@ -43,6 +43,8 @@ export interface MyParticipation {
   consents: Record<string, unknown>; answers: { reminder?: { enabled?: boolean; time?: string; channel?: 'push' | 'email' }; [k: string]: unknown };
   createdAt: string; simDate: string | null; transport: string; startMeasurementId: string | null;
   pausedFrom: string | null; pausedUntil: string | null; pauseUsed: boolean; paused: boolean;
+  /** 서명 캠페인: 내 서명이 몇 번째인지 · 내 공유 링크로 서명한 사람 수 */
+  signatureNo?: number | null; referredCount?: number;
 }
 
 export interface CampaignFile { id: string; name: string; mime: string; bytes: number; exclusive: boolean }

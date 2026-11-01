@@ -15,6 +15,8 @@ export interface ApplySheetProps {
   origin: 'detail' | 'elsewhere';
   onDone(result: ApplyResult): void;
   onClose(): void;
+  /** 서명 공유 링크(?ref=)를 타고 온 경우, 링크를 공유한 사람의 id */
+  sharedBy?: string | null;
 }
 
 interface Settings {
@@ -49,7 +51,7 @@ const MAX_COMPANIONS = 5;
 const CAMPAIGN_DONE = (t: string) => (t === 'signature' ? '서명했어요' : '신청했어요 · 내 활동에서 볼 수 있어요');
 
 /** 공통 신청 창(H-1 · S-1 · O-1). 어디서 열든 같은 창이 지금 화면 위에 뜬다. */
-export function ApplySheet({ campaignId, origin, onDone, onClose }: ApplySheetProps) {
+export function ApplySheet({ campaignId, origin, onDone, onClose, sharedBy }: ApplySheetProps) {
   const sim = useSim();
   const nav = useNavigate();
   const loggedIn = !!sim.userId && sim.role !== 'guest';
@@ -118,6 +120,7 @@ export function ApplySheet({ campaignId, origin, onDone, onClose }: ApplySheetPr
       if (s.fields?.includes('opinion') && opinion.trim()) answers.opinion = opinion.trim();
       body.answers = answers;
       if (s.hostJoin === 'ask' && host) body.joinHost = joinHost;
+      if (sharedBy && sharedBy !== sim.userId) body.sharedBy = sharedBy;
     } else {
       if (host) consents.host = hostOk;
       if (s.photoConsent) consents.photo = photo;

@@ -18,6 +18,13 @@ export function InfoCard({ detail }: { detail: CampaignDetail }) {
   if (s.recruitStart && s.recruitEnd) {
     rows.push([c.type === 'signature' ? '서명 기간' : '모집 기간', rangeLong(s.recruitStart, s.recruitEnd)]);
   }
+  if (c.type === 'signature') {
+    if (s.deliveryDate) rows.push(['전달', `${koLong(s.deliveryDate)}${typeof st.deliveryTarget === 'string' && st.deliveryTarget ? ` · ${st.deliveryTarget}` : ''}`]);
+    rows.push(['받는 정보', '활동명 · 사는 지역 (공개 화면에는 서명 수만 보여요)']);
+    rows.push(['서명 대상', '누구나 (회원 가입 필요)']);
+    rows.push(['함께 쓰는 기능', ['서명', st.regionalCounts === false ? '' : '지역별 서명 현황', '전달 결과 공지'].filter(Boolean).join(' · ')]);
+    return <InfoRows rows={rows} />;
+  }
   const mode = st.mode === 'online' ? '온라인' : st.mode === 'offline' ? '오프라인' : '온라인 · 오프라인';
   rows.push(['방식', c.type === 'practice' && st.recordEnabled !== false ? `${mode}${st.mode === 'offline' ? ' 모임' : ' 기록'}` : mode]);
   rows.push(['참여 대상', `누구나 (회원 가입 필요)${st.capacity ? ` · ${st.capacity.toLocaleString('ko-KR')}명까지` : ''}`]);
@@ -26,6 +33,10 @@ export function InfoCard({ detail }: { detail: CampaignDetail }) {
       ...(st.recordEnabled === false ? [] : (st.recordFields ?? ['check']).map((k) => FEATURE[k]).filter(Boolean)), '참가자 게시판', '후기'];
     rows.push(['함께 쓰는 기능', f.filter(Boolean).join(' · ')]);
   }
+  return <InfoRows rows={rows} />;
+}
+
+function InfoRows({ rows }: { rows: Array<[string, string]> }) {
   return (
     <section className="card cinfo" aria-label="캠페인 정보">
       <dl>

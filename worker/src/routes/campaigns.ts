@@ -10,7 +10,7 @@ import {
 } from '../campaignSettings';
 import { fail, json, type Ctx, type Handler } from '../db';
 import { getGroup, isStaffRole, memberRole } from './groups';
-import { promoteWaitlist } from './participations';
+import { promoteWaitlist, signatureNo } from './participations';
 import { decodeBase64 } from './posts';
 import { page, PAGE_SIZE, parseCursor, readBody, requireUser, str } from './common';
 
@@ -248,13 +248,20 @@ export async function detail(ctx: Ctx, r: CampaignRow) {
   const missions = await missionsOf(ctx, r.id);
   const files = (await filesOf(ctx, r.id)).filter((f) => exclusiveOk || !f.exclusive);
   const tools = (await toolsOf(ctx, r.id)).filter((t) => exclusiveOk || !t.exclusive);
+  // 서명 캠페인: 내 서명이 몇 번째인지 · 내 공유 링크로 들어와 서명한 사람 수
+  const sig = r.type === 'signature' && mine
+    ? {
+      signatureNo: await signatureNo(ctx, { id: mine.id, campaign_id: r.id, state: mine.state, created_at: mine.created_at }),
+      referredCount: (await ctx.db.first<{ n: number }>("SELECT COUNT(*) n FROM participations WHERE campaign_id = ? AND shared_by = ? AND state = 'signed'", r.id, ctx.userId))?.n ?? 0,
+    }
+    : {};
   return {
     campaign: await campaignView(ctx, r, showExact),
     status: st,
     phase: st === 'draft' ? null : participantPhase(statusInput(r), ctx.simDate),
     counts: await countsOf(ctx, r, settings),
     myParticipation: mine
-      ? { id: mine.id, state: mine.state, companions: mine.companions, waitlistNo: mine.waitlist_no, consents: JSON.parse(mine.consents_json), answers: JSON.parse(mine.answers_json), createdAt: mine.created_at, simDate: mine.sim_date, transport: mine.transport, startMeasurementId: mine.start_measurement_id, pausedFrom: mine.paused_from, pausedUntil: mine.paused_until, pauseUsed: !!mine.pause_used, paused: !!mine.paused_from && !!mine.paused_until && ctx.simDate >= mine.paused_from && ctx.simDate <= mine.paused_until }
+      ? { id: mine.id, state: mine.state, companions: mine.companions, waitlistNo: mine.waitlist_no, consents: JSON.parse(mine.consents_json), answers: JSON.parse(mine.answers_json), createdAt: mine.created_at, simDate: mine.sim_date, transport: mine.transport, startMeasurementId: mine.start_measurement_id, pausedFrom: mine.paused_from, pausedUntil: mine.paused_until, pauseUsed: !!mine.pause_used, paused: !!mine.paused_from && !!mine.paused_until && ctx.simDate >= mine.paused_from && ctx.simDate <= mine.paused_until, ...sig }
       : null,
     missions,
     checklist: await checklistOf(ctx, r, settings, missions.length, files.length + tools.length, mine),

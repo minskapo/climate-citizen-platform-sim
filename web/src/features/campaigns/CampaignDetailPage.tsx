@@ -4,6 +4,7 @@ import { api, ApiError } from '../../lib/api';
 import { useSim } from '../../lib/sim';
 import { EmptyState, Spinner } from '../../components/ui';
 import { PracticeDetail } from '../practice/PracticeDetail';
+import { SignatureDetail } from '../signature/SignatureDetail';
 import { CampaignContext, type CampaignDetail } from './types';
 import './campaigns.css';
 
@@ -40,9 +41,11 @@ export function CampaignDetailPage() {
     <CampaignContext.Provider value={{ detail, reload }}>
       {detail.campaign.type === 'practice'
         ? <PracticeDetail detail={detail} reload={reload} completed={!!state.completed} />
-        : (
+        : detail.campaign.type === 'signature'
+          ? <SignatureDetail detail={detail} reload={reload} />
+          : (
           <div className="container page">
-            <EmptyState title={detail.campaign.title}>{detail.campaign.type === 'signature' ? '서명' : '오프라인 모임'} 캠페인 화면은 준비 중이에요.</EmptyState>
+            <EmptyState title={detail.campaign.title}>오프라인 모임 캠페인 화면은 준비 중이에요.</EmptyState>
           </div>
         )}
     </CampaignContext.Provider>

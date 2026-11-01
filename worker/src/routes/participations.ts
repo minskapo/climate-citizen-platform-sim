@@ -49,10 +49,10 @@ export function participationView(ctx: Ctx, p: ParticipationRow, extra: Record<s
   };
 }
 
-async function signatureNo(ctx: Ctx, p: ParticipationRow): Promise<number | null> {
+export async function signatureNo(ctx: Ctx, p: { id: string; campaign_id: string; state: string; created_at: string }): Promise<number | null> {
   if (p.state !== 'signed') return null;
   const r = await ctx.db.first<{ n: number }>(
-    "SELECT COUNT(*) n FROM participations WHERE campaign_id = ? AND state = 'signed' AND (created_at < ? OR (created_at = ? AND id <= ?))",
+    "SELECT COUNT(*) n FROM participations WHERE campaign_id = ? AND state = 'signed' AND (created_at < ? OR (created_at = ? AND rowid <= (SELECT rowid FROM participations WHERE id = ?)))",
     p.campaign_id, p.created_at, p.created_at, p.id,
   );
   return r?.n ?? null;

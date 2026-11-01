@@ -6,6 +6,16 @@ export function shareUrl(path: string): string {
   return `${base}#${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/** 서명 공유 링크. 받은 사람이 서명하면 공유한 사람의 몫으로 센다. 예: https://…/#/campaigns/c1?ref=u1 */
+export function buildShareUrl(campaignId: string, userId?: string | null): string {
+  return shareUrl(`/campaigns/${campaignId}${userId ? `?ref=${encodeURIComponent(userId)}` : ''}`);
+}
+
+/** 공유 링크를 복사하고 토스트를 띄운다. */
+export function copyShareLink(campaignId: string, userId?: string | null): Promise<boolean> {
+  return copyText(buildShareUrl(campaignId, userId), '링크를 복사했어요');
+}
+
 export async function copyText(text: string, done = '주소를 복사했어요'): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);

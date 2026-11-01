@@ -134,6 +134,19 @@ describe('participate', () => {
     expect(await h.db.first('SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?', g, b)).not.toBeNull();
   });
 
+  test('campaign detail gives my signature order and referred count', async () => {
+    const { h, signature } = await setup();
+    const id = await signature();
+    const [a, b, c] = [await user(h, '가', '서울'), await user(h, '나', '서울'), await user(h, '다', '서울')];
+    const sign = (u: string, extra: Record<string, unknown> = {}) => h.call('POST', `/api/campaigns/${id}/participate`, { ...on(u, APPLY_DAY), body: { answers: {}, consents: { delivery: true }, ...extra } });
+    await sign(a);
+    await sign(b, { sharedBy: a });
+    await sign(c, { sharedBy: a });
+    const mine = async (u: string) => (await (await h.call('GET', `/api/campaigns/${id}`, on(u, APPLY_DAY))).json()).myParticipation;
+    expect(await mine(a)).toMatchObject({ signatureNo: 1, referredCount: 2 });
+    expect(await mine(c)).toMatchObject({ signatureNo: 3, referredCount: 0 });
+  });
+
   test('signature needs delivery consent; cancel before close only', async () => {
     const { h, signature } = await setup();
     const id = await signature();
