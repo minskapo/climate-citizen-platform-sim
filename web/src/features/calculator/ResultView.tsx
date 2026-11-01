@@ -1,5 +1,6 @@
 import { CONFIG, SECTOR_KEYS, type CalcResult } from '@shared/calculator';
-import { Button } from '../../components/ui';
+import { Link } from 'react-router-dom';
+import { Button, Chip } from '../../components/ui';
 import { BudgetLine, fmt } from './BudgetLine';
 import { SECTOR_NAME } from './SocialFoundation';
 
@@ -21,11 +22,16 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
 }
 
 /** 결과: 총량 · 평균/목표/한국 평균 · 탄소 예산선 · 분야별 + 오른쪽 저장/가입 카드. */
-export function ResultView({ result, avg, guest, campaign, onContinue, onRetry, onLeave, onSignup }: {
+export interface RecCampaign { id: string; title: string; participantCount: number; status: string }
+
+export function ResultView({ result, avg, guest, campaign, rec, policies, policyCounts, onContinue, onRetry, onLeave, onSignup }: {
   result: CalcResult;
   avg: number | null;
   guest: boolean;
   campaign: CampaignCtx | null;
+  rec: RecCampaign | null;
+  policies: string[];
+  policyCounts?: Record<string, number>;
   onContinue: () => void;
   onRetry: () => void;
   onLeave: () => void;
@@ -66,10 +72,34 @@ export function ResultView({ result, avg, guest, campaign, onContinue, onRetry, 
             </div>
           ))}
         </div>
+        <div className="calc-note" aria-label="내가 고른 정책">
+          <b>내가 고른 정책{policies.length > 0 ? ` · ${policies.join(', ')}` : ''}</b>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>
+              {guest
+                ? '같은 정책을 고른 시민 수는 가입하면 볼 수 있어요'
+                : policies.length > 0 ? '같은 정책을 고른 시민' : '다음 단계에서 정책을 고르면 같은 정책을 고른 시민 수를 볼 수 있어요'}
+            </span>
+            {guest ? <b aria-hidden="true">●,●●●명</b> : policies.length > 0 && <b>{(policyCounts?.[policies[0]] ?? 0).toLocaleString('ko-KR')}명</b>}
+          </div>
+        </div>
         <div className="calc-nav" style={{ marginTop: 'var(--s-6)' }}>
           <span />
           <Button size="lg" pill onClick={onContinue}>{over ? '다음: 감축 행동 고르기' : '다음: 사회적 기초 살펴보기'}</Button>
         </div>
+        {rec && (
+          <div className="card" style={{ marginTop: 'var(--s-4)', display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                <Chip tone="solid">{rec.status === 'recruiting' ? '모집 중' : '모집 예정'}</Chip>
+                <Chip tone="yellow">{SECTOR_NAME[sectors[0][0]]}이(가) 가장 많은 분께 추천</Chip>
+              </div>
+              <b>{rec.title}</b>
+              <p className="calc-lead" style={{ fontSize: 13 }}>이 결과를 출발점으로 4주 동안 함께 줄여 봐요 · {rec.participantCount.toLocaleString('ko-KR')}명 참여</p>
+            </div>
+            <Link to={`/campaigns/${rec.id}`} style={{ color: 'var(--c-green)', fontWeight: 600 }}>자세히 보기 →</Link>
+          </div>
+        )}
       </section>
       <aside>
         {guest ? (

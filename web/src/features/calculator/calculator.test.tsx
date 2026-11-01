@@ -17,6 +17,8 @@ vi.mock('../../lib/api', () => ({
     }
     if (path.endsWith('/choices')) return { measurement: { id: 'm1' } };
     if (path === '/api/aggregates/calculator') return { count: 5, avg: 10, policyCounts: { [POLICIES_REDUCE[0]]: 7 } };
+    if (path.startsWith('/api/campaigns?status=recruiting')) return { items: [{ id: 'r1', title: '새해 1.5도 한달살기', summary: '이동이 많은 분께', participantCount: 312 }, { id: 'r2', title: '동네 걷기', summary: '', participantCount: 5 }] };
+    if (path.startsWith('/api/campaigns?')) return { items: [] };
     if (path === '/api/campaigns/c1') return { campaign: { title: '새해 한달살기' }, myParticipation: null };
     return {};
   }),
@@ -128,5 +130,54 @@ describe('calculator', () => {
     const post = calls.find((c) => c.path === '/api/measurements')!;
     expect(post.body).toMatchObject({ place: 'campaign', campaignId: 'c1', kind: 'end' });
     await waitFor(() => expect(screen.getByText(/마무리 측정 저장됨/)).toBeInTheDocument());
+  });
+
+  test('multi and count answers are saved as string[] and Record<string, number>', async () => {
+    renderAt('/calculator');
+    for (let i = 0; i < 80 && !screen.queryByText('나의 1년 탄소배출량'); i++) {
+      const start = screen.queryByRole('button', { name: '시작하기' });
+      if (start) { fireEvent.click(start); continue; }
+      const mt = screen.queryByRole('checkbox', { name: /TV로/ });
+      if (mt) fireEvent.click(mt);
+      const fridge = screen.queryByLabelText('냉장고');
+      if (fridge) fireEvent.change(fridge, { target: { value: '2' } });
+      const next = screen.getByRole('button', { name: /^(다음|결과 보기)$/ });
+      if ((next as HTMLButtonElement).disabled) fireEvent.click(screen.getAllByRole('radio')[0]);
+      const last = screen.queryByRole('button', { name: '결과 보기' });
+      fireEvent.click(screen.getByRole('button', { name: /^(다음|결과 보기)$/ }));
+      if (last) break;
+    }
+    await screen.findByText('나의 1년 탄소배출량');
+    const a = calls.find((c) => c.path === '/api/measurements')!.body!.answers as Record<string, unknown>;
+    expect(a.leisureWays).toEqual(['tv']);
+    expect(a.appliances).toEqual({ fridge: 2 });
+  });
+
+  test('exactly 5.9 goes to the social branch', async () => {
+    const { calculate: real } = await import('@shared/calculator');
+    expect(real({}).under).toBe(true);
+    const { api } = await import('../../lib/api');
+    (api as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(async (path: string, init?: { body?: unknown }) => {
+      calls.push({ path, body: init?.body as never });
+      return { measurement: { id: 'm1', result: { ...real({}), total: 5.9, sectors: { food: 5.9, consumption: 0, transport: 0, housing: 0, leisure: 0 }, under: true }, policies: [] } };
+    });
+    renderAt('/calculator');
+    await toResult();
+    expect(screen.getByRole('button', { name: /사회적 기초/ })).toBeInTheDocument();
+  });
+
+  test('result shows recommended campaign preferring the top sector, and guest policy teaser', async () => {
+    simStore.set({ role: 'guest', userId: null });
+    renderAt('/calculator');
+    await toResult({ [CAR]: '60' });
+    expect(await screen.findByText('새해 1.5도 한달살기')).toBeInTheDocument();
+    expect(screen.getByText(/이동이\(가\) 가장 많은 분께 추천/)).toBeInTheDocument();
+    expect(screen.getByText('같은 정책을 고른 시민 수는 가입하면 볼 수 있어요')).toBeInTheDocument();
+  });
+
+  test('guest sees the save-later line on question screens', () => {
+    simStore.set({ role: 'guest', userId: null });
+    renderAt('/calculator');
+    expect(screen.getByText('가입 없이 · 결과는 가입 후 저장')).toBeInTheDocument();
   });
 });

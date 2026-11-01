@@ -11,7 +11,8 @@ export function HomeCalcCard() {
   const nav = useNavigate();
   const go = () => {
     const n = Number(v);
-    nav(`/calculator?from=home&q1=${Number.isFinite(n) && v !== '' ? Math.min(q.max ?? 999, Math.max(0, n)) : 0}`);
+    const ok = v.trim() !== '' && Number.isFinite(n);
+    nav(ok ? `/calculator?from=home&q1=${Math.min(q.max ?? 999, Math.max(0, n))}` : '/calculator?from=home');
   };
   return (
     <div className="card calc-homecard">

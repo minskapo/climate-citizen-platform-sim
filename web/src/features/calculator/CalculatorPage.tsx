@@ -12,7 +12,7 @@ import { ActionsPicker } from './ActionsPicker';
 import { fmt } from './BudgetLine';
 import { PolicyPicker } from './PolicyPicker';
 import { QuestionView } from './QuestionView';
-import { ResultView, type CampaignCtx } from './ResultView';
+import { ResultView, type CampaignCtx, type RecCampaign } from './ResultView';
 import { SECTOR_NAME, SocialFoundation } from './SocialFoundation';
 import { newLocalId, useCalcDraft } from './useCalcDraft';
 import './calculator.css';
@@ -70,6 +70,7 @@ export function CalculatorPage() {
   const [policies, setPolicies] = useState<string[]>([]);
   const [title, setTitle] = useState<string | null>(null);
   const [startTotal, setStartTotal] = useState<number | null>(null);
+  const [rec, setRec] = useState<RecCampaign | null>(null);
   const localId = useRef(newLocalId());
 
   // 캠페인 이름 · 출발점 측정값
@@ -98,6 +99,19 @@ export function CalculatorPage() {
 
   const step = ALL[idx];
   const setAns = (id: string, v: Answers[string]) => setAnswers((a) => ({ ...a, [id]: v }));
+  const loadRec = async (total: number, result: CalcResult) => {
+    try {
+      let list: Array<RecCampaign & { summary?: string }> = [];
+      for (const status of ['recruiting', 'scheduled']) {
+        const r = await api<{ items: Array<RecCampaign & { summary?: string }> }>(`/api/campaigns?status=${status}`, { quiet: true });
+        list = list.concat(r.items.map((x) => ({ ...x, status })));
+      }
+      void total;
+      const top = SECTOR_NAME[SECTOR_KEYS.map((k) => [k, result.sectors[k]] as const).sort((a, b) => b[1] - a[1])[0][0]];
+      const hit = list.find((c) => `${c.title} ${c.summary ?? ''}`.includes(top));
+      setRec(hit ?? list[0] ?? null);
+    } catch { setRec(null); }
+  };
   const refreshAgg = () => api<Agg>('/api/aggregates/calculator', { quiet: true }).then(setAgg).catch(() => undefined);
 
   const save = async () => {
@@ -114,6 +128,7 @@ export function CalculatorPage() {
       setM(r.measurement);
       setStage('result');
       refreshAgg();
+      loadRec(r.measurement.result.total, r.measurement.result);
       window.scrollTo?.(0, 0);
     } catch {
       showToast('저장하지 못했어요. 다시 시도해 주세요');
@@ -157,6 +172,7 @@ export function CalculatorPage() {
         <div className="calc-card">
           <div className="calc-prog"><span>{SECTOR_NAME[sectorOf]} · {qn} / {TOTAL_Q}</span><span>약 {remain}분 남음</span></div>
           <div className="calc-bar"><i style={{ width: `${(qn / TOTAL_Q) * 100}%` }} /></div>
+          {guest && <p className="calc-help" style={{ margin: '0 0 var(--s-3)' }}>가입 없이 · 결과는 가입 후 저장</p>}
           {step.kind === 'intro' ? (
             <div>
               <h2 className="calc-q">{SECTOR_NAME[step.sector]}</h2>
@@ -192,7 +208,7 @@ export function CalculatorPage() {
     content = (
       <div className="calc-wrap is-wide">
         <ResultView
-          result={m.result} avg={agg?.avg ?? null} guest={guest} campaign={campaignCtx}
+          result={m.result} avg={agg?.avg ?? null} guest={guest} campaign={campaignCtx} rec={rec} policies={policies} policyCounts={agg?.policyCounts}
           onContinue={() => setStage(over ? 'actions' : 'social')}
           onRetry={restart} onLeave={leaveToHome}
           onSignup={(via) => nav(via ? `/signup?via=${via}` : '/signup')}
