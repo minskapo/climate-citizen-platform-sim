@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSim } from '../../lib/sim';
-import { Chip } from '../../components/ui';
-import { Button } from '../../components/ui';
+import { Button, Chip } from '../../components/ui';
 import { copyShareLink } from '../../lib/share';
 import type { CampaignDetail } from '../campaigns/types';
 import { CancelSignModal } from './CancelSignModal';
-import { CountBlock, headerLine, md, n, ShareButton, SignLayout, sigSettings, visibleCount, type Aggregate } from './parts';
+import { md, n } from './fmt';
+import { CountBlock, headerLine, ShareButton, SignLayout, sigSettings, visibleCount, type Aggregate } from './parts';
 
 /** S-2 서명 완료: 몇 번째 서명 · 이어서 해 보세요 · 서명 취소(마감 전까지) */
 export function SignedView({ detail, agg, reload }: { detail: CampaignDetail; agg: Aggregate | null; reload(): Promise<void> }) {
@@ -68,7 +68,7 @@ export function SignedView({ detail, agg, reload }: { detail: CampaignDetail; ag
   const side = (
     <section className="card capply sig-card" aria-label="서명">
       <CountBlock detail={detail} agg={agg} />
-      <p className="sig-done"><strong>서명했어요!{mine.signatureNo ? ` ${n(mine.signatureNo)}번째 서명이에요` : ''}</strong></p>
+      <p className="sig-done"><strong>서명했어요!{mine.signatureNo && s.countDisplay !== 'hidden' ? ` ${n(mine.signatureNo)}번째 서명이에요` : ''}</strong></p>
       {toGo != null && <p className="capply-line">목표까지 {n(toGo)}명</p>}
       {sch.recruitEnd && sch.deliveryDate && <p className="capply-note">{md(sch.recruitEnd)}에 서명을 마감하고 {md(sch.deliveryDate)}에 사는 지역의 의회로 전달해요. 전달 결과와 답변은 알림으로 알려 드릴게요.</p>}
       <ShareButton detail={detail} onShared={() => setShared(true)} />

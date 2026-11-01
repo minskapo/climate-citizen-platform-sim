@@ -1,6 +1,6 @@
 import type { Aggregate } from './parts';
 
-const n = (x: number) => x.toLocaleString('ko-KR');
+import { n } from './fmt';
 
 /** 지역별 서명 수. 10명 미만 지역은 서버가 「그 밖」으로 묶어 준다. */
 export function RegionalCounts({ agg }: { agg: Aggregate | null }) {

@@ -155,10 +155,41 @@ describe('signature campaign', () => {
     expect(screen.queryByRole('button', { name: '서명하기' })).toBeNull();
   });
 
-  test('closed view subscribes to the next signature', async () => {
+  test('closed view without delivery does not claim delivery', async () => {
+    detail = makeDetail({ mine: { signatureNo: 3 } });
+    open('2027-03-05');
+    expect(await screen.findByText('내 서명이 전달 명단에 있어요')).toBeTruthy();
+    expect(screen.queryByText('내 서명이 전달됐어요')).toBeNull();
+  });
+
+  test('closed view offers joining the host group', async () => {
     open('2027-03-20');
-    fireEvent.click(await screen.findByRole('button', { name: '다음 서명 알림 받기' }));
-    await waitFor(() => expect(calls.some((c) => c.path === '/api/campaigns/c1/subscribe' && c.opts?.method !== 'DELETE')).toBe(true));
-    expect(await screen.findByText('다음 서명 캠페인이 열리면 알려 드릴게요')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: '주최 모임 소식 받기' }));
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/groups/g1/join' && c.opts?.method === 'POST')).toBe(true));
+    expect(screen.queryByRole('button', { name: '다음 서명 알림 받기' })).toBeNull();
+  });
+
+  test('closed view without host group hides the button', async () => {
+    detail = makeDetail();
+    (detail.campaign as Record<string, unknown>).host = { type: 'igt', name: '녹색전환연구소' };
+    (detail.campaign as Record<string, unknown>).hostGroupId = null;
+    open('2027-03-20');
+    expect(await screen.findByText(/다음 서명은 홈에서 알려 드려요/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '주최 모임 소식 받기' })).toBeNull();
+    expect(screen.queryByText(/주최 모임에 가입하면/)).toBeNull();
+  });
+
+  test('explainer shows written date; hidden count hides the ordinal', async () => {
+    (detail.explainer as Record<string, unknown>).simDate = '2027-01-04';
+    open('2027-01-20');
+    expect(await screen.findByText(/기후정책 아카데미 동문 모임 · 1\. 4\. 작성/)).toBeTruthy();
+  });
+
+  test('hidden count signed view omits the ordinal', async () => {
+    detail = makeDetail({ settings: { countDisplay: 'hidden' }, mine: { signatureNo: 7 } });
+    agg = { count: null, byRegion: [], other: { regions: 0, n: 0 } };
+    open('2027-01-20');
+    expect(await screen.findByText('서명했어요!')).toBeTruthy();
+    expect(screen.queryByText(/7번째/)).toBeNull();
   });
 });

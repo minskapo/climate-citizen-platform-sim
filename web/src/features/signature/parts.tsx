@@ -10,14 +10,13 @@ import { HostCard } from '../campaigns/HostCard';
 import { InfoCard } from '../campaigns/InfoCard';
 import { MaterialsList } from '../campaigns/MaterialsList';
 import type { BlockScreen, CampaignDetail } from '../campaigns/types';
+import { md, n } from './fmt';
 import { ExplainerArticle } from './ExplainerArticle';
 import { RegionalCounts } from './RegionalCounts';
 import './signature.css';
 
 export interface Aggregate { count: number | null; byRegion: Array<{ name: string; n: number }>; other: { regions: number; n: number } }
 
-export const n = (x: number) => x.toLocaleString('ko-KR');
-export const md = (d: string) => koShort(d).replace(/\(.\)$/, '');
 
 export interface SigSettings {
   goal: number; countDisplay: 'count_and_rate' | 'count' | 'hidden'; regionalCounts: boolean; demandSummary: string;

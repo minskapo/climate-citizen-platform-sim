@@ -219,10 +219,10 @@ async function toolsOf(ctx: Ctx, campaignId: string) {
 async function explainerOf(ctx: Ctx, settings: CampaignSettings) {
   const pid = (settings as SignatureSettings).explainerPostId;
   if (!pid) return null;
-  const p = await ctx.db.first<{ id: string; title: string; body: string; attachments_json: string; created_at: string }>(
-    'SELECT id, title, body, attachments_json, created_at FROM posts WHERE id = ?', pid,
+  const p = await ctx.db.first<{ id: string; title: string; body: string; attachments_json: string; created_at: string; sim_date: string | null }>(
+    'SELECT id, title, body, attachments_json, created_at, sim_date FROM posts WHERE id = ?', pid,
   );
-  return p ? { id: p.id, title: p.title, body: p.body, attachments: JSON.parse(p.attachments_json), createdAt: p.created_at } : null;
+  return p ? { id: p.id, title: p.title, body: p.body, attachments: JSON.parse(p.attachments_json), createdAt: p.created_at, simDate: p.sim_date } : null;
 }
 
 const ACTIVE = "state NOT IN ('cancelled','waitlisted')";

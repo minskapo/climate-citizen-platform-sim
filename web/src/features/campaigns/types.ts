@@ -64,7 +64,7 @@ export interface CampaignDetail {
   checklist: ChecklistEntry[];
   files: CampaignFile[];
   tools: CampaignTool[];
-  explainer: { id: string; title: string; body: string; attachments: unknown[]; createdAt: string } | null;
+  explainer: { id: string; title: string; body: string; attachments: unknown[]; createdAt: string; simDate?: string | null } | null;
   subscribed?: boolean;
 }
 

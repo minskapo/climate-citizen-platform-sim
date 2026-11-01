@@ -8,7 +8,8 @@ import { showToast } from '../../components/Toast';
 import { Button, Chip } from '../../components/ui';
 import { useFileUrl } from '../../components/useFileUrl';
 import type { CampaignDetail } from '../campaigns/types';
-import { CountBlock, headerLine, md, n, SignLayout, type Aggregate } from './parts';
+import { md, n } from './fmt';
+import { CountBlock, headerLine, SignLayout, type Aggregate } from './parts';
 
 interface Delivery {
   id: string; summary: string; councils: string[]; photoFileId: string | null; createdAt: string;
@@ -61,27 +62,31 @@ export function ClosedView({ detail, agg, reload }: { detail: CampaignDetail; ag
     return () => { alive = false; };
   }, [c.id]);
 
-  const subscribed = !!detail.subscribed;
-  const toggle = async () => {
-    if (!sim.userId || sim.role === 'guest') { showToast('가입하면 알림을 받을 수 있어요'); nav('/signup'); return; }
+  const hostId = c.host.type === 'group' && c.host.id ? c.host.id : null;
+  const [role, setRole] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!hostId || !sim.userId || sim.role === 'guest') { setRole(null); return; }
+    let alive = true;
+    api<{ myRole: string | null }>(`/api/groups/${hostId}`, { quiet: true }).then((g) => alive && setRole(g.myRole)).catch(() => alive && setRole(null));
+    return () => { alive = false; };
+  }, [hostId, sim.userId, sim.role]);
+  const inGroup = !!role && ['owner', 'staff', 'member'].includes(role);
+  const pending = role === 'pending';
+  const joinHost = async () => {
+    if (!hostId) return;
+    if (!sim.userId || sim.role === 'guest') { showToast('가입하면 모임 소식을 받을 수 있어요'); nav('/signup'); return; }
     setBusy(true);
     try {
-      if (subscribed) {
-        await api(`/api/campaigns/${c.id}/subscribe`, { method: 'DELETE', quiet: true });
-        showToast('알림 신청을 취소했어요');
-      } else {
-        await api(`/api/campaigns/${c.id}/subscribe`, { method: 'POST', body: {}, quiet: true });
-        showToast('다음 서명 캠페인이 열리면 알려 드릴게요');
-      }
-      await reload();
+      const r = await api<{ role: string }>(`/api/groups/${hostId}/join`, { method: 'POST', body: {}, quiet: true });
+      setRole(r.role);
+      showToast(r.role === 'pending' ? '가입을 신청했어요. 운영진이 승인하면 가입돼요' : '주최 모임에 가입했어요');
     } catch (e) {
-      showToast((e as Error).message || '알림을 신청하지 못했어요');
+      showToast((e as Error).message || '가입하지 못했어요');
     } finally {
       setBusy(false);
     }
   };
 
-  const delivered = !!delivery;
   const lead = delivery
     ? <DeliveryCard detail={detail} delivery={delivery} count={agg?.count ?? null} />
     : delivery === null
@@ -91,15 +96,23 @@ export function ClosedView({ detail, agg, reload }: { detail: CampaignDetail; ag
           <p className="sig-delivery-body">{c.schedule.deliveryDate ? `${md(c.schedule.deliveryDate)}에 전달해요. ` : ''}결과가 올라오면 알림으로 알려 드릴게요.</p>
         </section>
       ) : null;
+  const delivered = !!delivery;
   const joined = detail.myParticipation?.state === 'signed';
   const side = (
     <section className="card capply sig-card" aria-label="서명 마감">
       <CountBlock detail={detail} agg={agg} />
-      {joined && <p className="sig-done"><strong>내 서명이 전달됐어요</strong></p>}
-      <p className="capply-note">서명이 마감됐어요. 주최 모임에 가입하면 다음 서명과 후속 활동 소식을 받아 볼 수 있어요.</p>
-      <Button size="lg" block variant={subscribed ? 'tint' : 'primary'} disabled={busy} aria-pressed={subscribed} onClick={toggle}>
-        {subscribed ? '✓ 다음 서명 알림 신청됨' : '다음 서명 알림 받기'}
-      </Button>
+      {joined && <p className="sig-done"><strong>{delivered ? '내 서명이 전달됐어요' : '내 서명이 전달 명단에 있어요'}</strong></p>}
+      {hostId ? (
+        <>
+          <p className="capply-note">서명이 마감됐어요. 주최 모임에 가입하면 다음 서명과 후속 활동 소식을 받아 볼 수 있어요.</p>
+          {inGroup ? <p className="sig-note">주최 모임에 가입돼 있어요</p>
+            : pending ? <p className="sig-note">주최 모임 가입 승인을 기다리고 있어요</p>
+              : role === undefined ? null
+                : <Button size="lg" block disabled={busy} onClick={joinHost}>주최 모임 소식 받기</Button>}
+        </>
+      ) : (
+        <p className="capply-note">서명이 마감됐어요. 다음 서명은 홈에서 알려 드려요.</p>
+      )}
     </section>
   );
   return (

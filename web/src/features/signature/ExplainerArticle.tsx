@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { koShort } from '@shared/date';
 import { Paragraphs } from '../../components/linkify';
 import { useFileUrl } from '../../components/useFileUrl';
 import type { CampaignDetail } from '../campaigns/types';
@@ -28,7 +29,7 @@ export function ExplainerArticle({ detail }: { detail: CampaignDetail }) {
       <Paragraphs text={text} />
       {(!long || all) && images.map((a) => <Img key={a.id} a={a} />)}
       <div className="sig-explainer-foot">
-        <span className="sig-note">{detail.campaign.host.name}</span>
+        <span className="sig-note">{detail.campaign.host.name}{ex.simDate ? ` · ${koShort(ex.simDate).replace(/\(.\)$/, '')} 작성` : ''}</span>
         {long && <button type="button" className="link-btn" onClick={() => setAll(!all)}>{all ? '접기' : '설명 글 전체 보기 →'}</button>}
       </div>
     </section>
