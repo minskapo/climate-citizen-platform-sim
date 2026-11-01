@@ -1,0 +1,30 @@
+.coff-notice { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 16px 0 0; padding: 12px 16px; border-radius: 10px; background: var(--c-green-tint); color: var(--c-text); font-size: var(--fs-14); }
+.coff-seats { margin-top: 12px; font-size: var(--fs-14); color: var(--c-green); font-weight: 600; }
+.coff-map-box { display: flex; align-items: center; justify-content: center; height: 180px; margin: 10px 0; border-radius: 12px; background: var(--c-green-tint); color: var(--c-text-sub); font-size: var(--fs-14); }
+.coff-place strong, .coff-record strong { display: block; margin: 8px 0 4px; font-size: var(--fs-18); }
+.coff-sub { font-size: var(--fs-13); color: var(--c-text-sub); line-height: 1.6; }
+.coff-attend { display: flex; flex-direction: column; gap: 12px; }
+.coff-attended { font-size: var(--fs-14); line-height: 1.6; }
+.coff-attended strong { display: block; color: var(--c-green); font-size: var(--fs-16); }
+.coff-closed { font-size: var(--fs-14); color: var(--c-text-sub); text-align: center; }
+.coff-notice-card strong { display: block; margin: 6px 0 2px; }
+.coff-code { font-size: 28px; letter-spacing: .4em; text-align: center; height: 64px; }
+.coff-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.coff-next { display: flex; flex-direction: column; gap: 10px; }
+.coff-next h2 { font-size: var(--fs-18); }
+.coff-next ul { list-style: none; margin: 0; padding: 0; }
+.coff-next li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--c-line-soft); }
+.coff-next li small { color: var(--c-text-sub); }
+.coff-cert-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; }
+.coff-cert { max-width: 640px; margin: 0 auto; padding: 56px 48px; border: 2px solid var(--c-green); border-radius: 8px; background: #fff; text-align: center; }
+.coff-cert h2 { font-size: 32px; margin: 12px 0 32px; letter-spacing: .2em; }
+.coff-cert dl { text-align: left; margin: 0 0 32px; }
+.coff-cert dl > div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--c-line-soft); }
+.coff-cert dt { color: var(--c-text-sub); }
+.coff-cert-org { font-weight: 700; color: var(--c-green); }
+.coff-cert-text { font-size: var(--fs-16); margin-bottom: 8px; }
+.coff-cert-date { margin-bottom: 24px; color: var(--c-text-sub); }
+@media print {
+  .simbar, .hdr, .ftr, footer, .toast-host, .no-print { display: none !important; }
+  .coff-cert { border-color: #000; }
+}

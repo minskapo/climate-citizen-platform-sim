@@ -23,7 +23,7 @@ export function useParticipantTab(): [ParticipantTab, (t: ParticipantTab) => voi
  * - 큰 머리(상세): 대표 이미지 · 소개 · 상태 줄
  * - 작은 머리(참가자 화면): 작은 이미지 · 한 줄 정보 · 탭(오늘 · 내 기록 · 참가자 게시판 · 캠페인 안내)
  */
-export function CampaignHeader({ detail, statusChip, meta, line, tabs }: {
+export function CampaignHeader({ detail, statusChip, meta, line, tabs, tabItems = PARTICIPANT_TABS }: {
   detail: CampaignDetail;
   /** 맨 앞 상태 칩(모집 중 · 참여 중 · 완주 …) */
   statusChip: ReactNode;
@@ -32,6 +32,8 @@ export function CampaignHeader({ detail, statusChip, meta, line, tabs }: {
   /** 큰 머리의 초록 상태 줄 (예: 312명 참여 · 모집 마감 1. 31.(일) · D-12) */
   line?: ReactNode;
   tabs?: boolean;
+  /** 탭 이름을 바꿔 쓸 때(오프라인: 모임 안내 · 참가자 게시판 · 캠페인 안내) */
+  tabItems?: Array<[ParticipantTab, string]>;
 }) {
   const c = detail.campaign;
   const img = useFileUrl(c.imageFileId);
@@ -61,7 +63,7 @@ export function CampaignHeader({ detail, statusChip, meta, line, tabs }: {
           </div>
           {tabs && (
             <div className="ctabs" role="tablist" aria-label="캠페인 화면">
-              {PARTICIPANT_TABS.map(([k, label]) => (
+              {tabItems.map(([k, label]) => (
                 <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : undefined} onClick={() => setTab(k)}>{label}</button>
               ))}
             </div>

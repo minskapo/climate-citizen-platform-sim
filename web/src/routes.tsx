@@ -16,6 +16,8 @@ import { HomePage } from './features/home/HomePage';
 import { AboutPage } from './features/about/AboutPage';
 import { MePage } from './features/me/MePage';
 import { AccountSettings } from './features/me/AccountSettings';
+import { AttendRoute } from './features/offline/AttendRoute';
+import { Certificate } from './features/offline/Certificate';
 import { CampaignPostPage } from './features/campaigns/CampaignPostPage';
 
 /**
@@ -26,6 +28,7 @@ export const platformRoutes: RouteObject[] = [
   { path: '/', element: <HomePage /> },
   { path: '/campaigns', element: <CampaignListPage /> },
   { path: '/campaigns/:id', element: <CampaignDetailPage /> },
+  { path: '/campaigns/:id/certificate', element: <Certificate /> },
   { path: '/campaigns/:id/posts/:postId', element: <CampaignPostPage /> },
   { path: '/groups', element: <GroupListPage /> },
   { path: '/groups/new', element: <NewGroupPage /> },
@@ -40,7 +43,7 @@ export const platformRoutes: RouteObject[] = [
   { path: '/login', element: <LoginPicker /> },
   { path: '/onboarding/*', element: <OnboardingFlow /> },
   { path: '/tools/:slug', element: <Placeholder title="웹 도구" /> },
-  { path: '/attend/:campaignId', element: <Placeholder title="출석" /> },
+  { path: '/attend/:campaignId', element: <AttendRoute /> },
   { path: '/info/:slug', element: <Placeholder title="안내" /> },
   { path: '*', element: <NotFound /> },
 ];

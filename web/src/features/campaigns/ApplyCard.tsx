@@ -68,9 +68,15 @@ export function ApplyCard({ detail, reload, onReviews }: { detail: CampaignDetai
   } else if (st === 'recruiting' && !quit) {
     big = { num: participants, unit: `명 ${verb}` };
     if (s.recruitEnd) line = `모집 마감까지 ${dDay(sim.today, s.recruitEnd)} · ${koShort(s.recruitEnd)}`;
-    main = full
+    const waitlist = c.type === 'offline' && c.settings.waitlist === true;
+    main = full && !waitlist
       ? <Button size="lg" block disabled>자리가 모두 찼어요</Button>
-      : <Button size="lg" block onClick={() => setApplying(true)}>{c.type === 'signature' ? '서명하기' : '참여 신청하기'}</Button>;
+      : <Button size="lg" block onClick={() => setApplying(true)}>{c.type === 'signature' ? '서명하기' : full ? '대기 신청하기' : '참여 신청하기'}</Button>;
+    if (c.type === 'offline') {
+      note = c.host.type === 'group'
+        ? `신청하면 주최 모임 「${c.host.name}」에 가입되고, 정확한 장소와 하루 전 안내를 받아요. 회원 가입이 필요해요.`
+        : '신청하면 정확한 장소와 하루 전 안내를 받아요. 회원 가입이 필요해요.';
+    }
     if (c.type === 'practice') {
       const start = s.runStart ? `${md(s.runStart)}부터 ` : '';
       const remind = c.settings.recordEnabled === false ? '' : `${start}${c.settings.recordCycle === 'daily' ? '매일 ' : '기록할 날 '}저녁 미션 알림을 받아요. `;
