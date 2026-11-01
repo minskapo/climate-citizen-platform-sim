@@ -19,7 +19,9 @@ export function Header() {
   const unread = useUnreadNotifications();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
   const signedIn = role !== 'guest' && !!userId;
 
   const account = signedIn ? (

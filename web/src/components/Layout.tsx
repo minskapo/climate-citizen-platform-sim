@@ -6,7 +6,9 @@ import { SimBar } from './SimBar';
 
 function useScrollTop() {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 }
 
 /** 플랫폼 화면: 체험 도구 막대 · 헤더 · 본문 · 푸터 */
