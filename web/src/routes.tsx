@@ -2,6 +2,9 @@ import { useRoutes, type RouteObject } from 'react-router-dom';
 import { BareLayout, PlatformLayout } from './components/Layout';
 import { NotFound, Placeholder } from './pages/Placeholder';
 import { CalculatorPage } from './features/calculator/CalculatorPage';
+import { SignupPage } from './features/auth/SignupPage';
+import { LoginPicker } from './features/auth/LoginPicker';
+import { OnboardingFlow } from './features/onboarding/OnboardingFlow';
 
 /**
  * 화면 목록. 화면 작업(12–22)은 해당 줄의 element만 실제 화면으로 바꾼다.
@@ -19,9 +22,9 @@ export const platformRoutes: RouteObject[] = [
   { path: '/me', element: <Placeholder title="내 활동" /> },
   { path: '/me/settings', element: <Placeholder title="계정 설정" /> },
   { path: '/about', element: <Placeholder title="소개" /> },
-  { path: '/signup', element: <Placeholder title="가입하기" /> },
-  { path: '/login', element: <Placeholder title="로그인" /> },
-  { path: '/onboarding/*', element: <Placeholder title="시작하기" /> },
+  { path: '/signup', element: <SignupPage /> },
+  { path: '/login', element: <LoginPicker /> },
+  { path: '/onboarding/*', element: <OnboardingFlow /> },
   { path: '/tools/:slug', element: <Placeholder title="웹 도구" /> },
   { path: '/attend/:campaignId', element: <Placeholder title="출석" /> },
   { path: '/info/:slug', element: <Placeholder title="안내" /> },
