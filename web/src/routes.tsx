@@ -19,6 +19,7 @@ import { AccountSettings } from './features/me/AccountSettings';
 import { AttendRoute } from './features/offline/AttendRoute';
 import { Certificate } from './features/offline/Certificate';
 import { CampaignPostPage } from './features/campaigns/CampaignPostPage';
+import { PageToolView } from './features/sandbox/PageToolView';
 
 /**
  * 화면 목록. 화면 작업(12–22)은 해당 줄의 element만 실제 화면으로 바꾼다.
@@ -42,7 +43,7 @@ export const platformRoutes: RouteObject[] = [
   { path: '/signup', element: <SignupPage /> },
   { path: '/login', element: <LoginPicker /> },
   { path: '/onboarding/*', element: <OnboardingFlow /> },
-  { path: '/tools/:slug', element: <Placeholder title="웹 도구" /> },
+  { path: '/tools/:slug', element: <PageToolView /> },
   { path: '/attend/:campaignId', element: <AttendRoute /> },
   { path: '/info/:slug', element: <Placeholder title="안내" /> },
   { path: '*', element: <NotFound /> },
