@@ -10,6 +10,9 @@ import { NewGroupPage } from './features/groups/NewGroupPage';
 import { GroupDetail } from './features/groups/GroupDetail';
 import { GroupManage } from './features/groups/GroupManage';
 import { PostPage } from './features/groups/PostPage';
+import { CampaignListPage } from './features/campaigns/CampaignListPage';
+import { CampaignDetailPage } from './features/campaigns/CampaignDetailPage';
+import { CampaignPostPage } from './features/campaigns/CampaignPostPage';
 
 /**
  * 화면 목록. 화면 작업(12–22)은 해당 줄의 element만 실제 화면으로 바꾼다.
@@ -17,8 +20,9 @@ import { PostPage } from './features/groups/PostPage';
  */
 export const platformRoutes: RouteObject[] = [
   { path: '/', element: <Placeholder title="홈" /> },
-  { path: '/campaigns', element: <Placeholder title="캠페인" /> },
-  { path: '/campaigns/:id', element: <Placeholder title="캠페인 자세히" /> },
+  { path: '/campaigns', element: <CampaignListPage /> },
+  { path: '/campaigns/:id', element: <CampaignDetailPage /> },
+  { path: '/campaigns/:id/posts/:postId', element: <CampaignPostPage /> },
   { path: '/groups', element: <GroupListPage /> },
   { path: '/groups/new', element: <NewGroupPage /> },
   { path: '/groups/:id', element: <GroupDetail /> },

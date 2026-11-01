@@ -222,7 +222,8 @@ async function countsOf(ctx: Ctx, r: CampaignRow, settings: CampaignSettings) {
   const w = (await ctx.db.first<{ n: number }>("SELECT COUNT(*) n FROM participations WHERE campaign_id = ? AND state = 'waitlisted'", r.id))!;
   const capacity = r.type === 'signature' ? null : (settings as PracticeSettings | OfflineSettings).capacity;
   const taken = r.type === 'offline' ? a.seats ?? 0 : a.n;
-  return { participants: a.n, waitlisted: w.n, seatsTaken: taken, capacity, seatsLeft: capacity == null ? null : Math.max(0, capacity - taken) };
+  const sub = (await ctx.db.first<{ n: number }>('SELECT COUNT(*) n FROM campaign_subscriptions WHERE campaign_id = ?', r.id))!;
+  return { participants: a.n, waitlisted: w.n, seatsTaken: taken, capacity, seatsLeft: capacity == null ? null : Math.max(0, capacity - taken), subscribers: sub.n };
 }
 
 async function detail(ctx: Ctx, r: CampaignRow) {
@@ -250,6 +251,9 @@ async function detail(ctx: Ctx, r: CampaignRow) {
     files,
     tools,
     explainer: r.type === 'signature' ? await explainerOf(ctx, settings) : null,
+    subscribed: ctx.userId
+      ? !!(await ctx.db.first('SELECT id FROM campaign_subscriptions WHERE campaign_id = ? AND user_id = ?', r.id, ctx.userId))
+      : false,
   };
 }
 
@@ -815,10 +819,15 @@ export const listCampaigns: Handler = async (req, ctx) => {
       `SELECT campaign_id, COUNT(*) n FROM participations WHERE campaign_id IN (${ids.map(() => '?').join(',')}) AND ${ACTIVE} GROUP BY campaign_id`, ...ids)
     : [];
   const pmap = new Map(pc.map((x) => [x.campaign_id, x.n]));
+  const sc = ids.length
+    ? await ctx.db.all<{ campaign_id: string; n: number }>(
+      `SELECT campaign_id, COUNT(*) n FROM campaign_subscriptions WHERE campaign_id IN (${ids.map(() => '?').join(',')}) GROUP BY campaign_id`, ...ids)
+    : [];
+  const smap = new Map(sc.map((x) => [x.campaign_id, x.n]));
   const items = slice.map(({ r, st, settings, g }) => ({
     id: r.id, type: r.type, title: r.title, summary: r.summary, imageFileId: r.image_file_id,
     host: g ? { type: 'group' as const, id: g.id, name: g.name } : { type: 'igt' as const, name: IGT_NAME },
-    mode: settings.mode, schedule: scheduleOf(r), status: st, participantCount: pmap.get(r.id) ?? 0, hero: !!r.hero,
+    mode: settings.mode, schedule: scheduleOf(r), status: st, participantCount: pmap.get(r.id) ?? 0, subscriberCount: smap.get(r.id) ?? 0, hero: !!r.hero,
     ...(isAdmin(ctx) ? { publish: r.publish, showUpcoming: !!r.show_upcoming } : {}),
   }));
   return json({ ...page(items, offset), counts });
@@ -857,3 +866,30 @@ export async function explainerVisible(ctx: Ctx, campaignId: string): Promise<bo
   const r = await loadCampaign(ctx, campaignId);
   return !!r && visibleTo(ctx, r);
 }
+
+// ---- 알림 받기 (모집 예정 구독) ----------------------------------------------
+
+/** POST /api/campaigns/:id/subscribe — idempotent. */
+export const subscribeCampaign: Handler = async (_req, ctx, p) => {
+  const uid = requireUser(ctx);
+  if (uid instanceof Response) return uid;
+  const r = await loadCampaign(ctx, p.id);
+  if (!r || !visibleTo(ctx, r)) return notFound();
+  await ctx.db.run(
+    'INSERT OR IGNORE INTO campaign_subscriptions (id, created_at, campaign_id, user_id, sim_date) VALUES (?,?,?,?,?)',
+    nanoid(), ctx.now, r.id, uid, ctx.simDate,
+  );
+  const n = (await ctx.db.first<{ n: number }>('SELECT COUNT(*) n FROM campaign_subscriptions WHERE campaign_id = ?', r.id))!.n;
+  return json({ subscribed: true, subscriberCount: n });
+};
+
+/** DELETE /api/campaigns/:id/subscribe */
+export const unsubscribeCampaign: Handler = async (_req, ctx, p) => {
+  const uid = requireUser(ctx);
+  if (uid instanceof Response) return uid;
+  const r = await loadCampaign(ctx, p.id);
+  if (!r) return notFound();
+  await ctx.db.run('DELETE FROM campaign_subscriptions WHERE campaign_id = ? AND user_id = ?', r.id, uid);
+  const n = (await ctx.db.first<{ n: number }>('SELECT COUNT(*) n FROM campaign_subscriptions WHERE campaign_id = ?', r.id))!.n;
+  return json({ subscribed: false, subscriberCount: n });
+};

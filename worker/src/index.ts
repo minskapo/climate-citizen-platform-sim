@@ -9,7 +9,7 @@ import { groupParticipants } from './routes/admin';
 import { getFile } from './routes/files';
 import {
   addCampaignFile, cloneCampaign, createBundle, createCampaign, deleteCampaignFile, getCampaign, getHero, importBundle, listBundles, listCampaigns,
-  patchCampaignFile, publishCampaign, putCampaignTools, putChecklist, putExplainer, putMissions, updateCampaign,
+  patchCampaignFile, publishCampaign, putCampaignTools, putChecklist, putExplainer, putMissions, subscribeCampaign, unsubscribeCampaign, updateCampaign,
 } from './routes/campaigns';
 import { createReport } from './routes/reports';
 import { listNotifications, readNotifications, syncNotifications } from './routes/notifications';
@@ -86,6 +86,8 @@ export const routes: Route[] = [
   { method: 'GET', pattern: '/api/mission-bundles', handler: listBundles },
   { method: 'POST', pattern: '/api/mission-bundles', handler: createBundle },
   { method: 'POST', pattern: '/api/campaigns/:id/participate', handler: participate },
+  { method: 'POST', pattern: '/api/campaigns/:id/subscribe', handler: subscribeCampaign },
+  { method: 'DELETE', pattern: '/api/campaigns/:id/subscribe', handler: unsubscribeCampaign },
   { method: 'POST', pattern: '/api/campaigns/:id/checklist/:itemId/done', handler: checklistDone },
   { method: 'GET', pattern: '/api/campaigns/:id/today-count', handler: todayCount },
   { method: 'GET', pattern: '/api/campaigns/:id/attendance-code', handler: getAttendanceCode },

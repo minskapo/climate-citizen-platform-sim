@@ -90,7 +90,10 @@ export function K5Campaigns({ sido, sigungu, modes, applied, onApplied, onPrev, 
               </div>
               {done ? <Chip tone="solid">✓ {a?.signed ? '서명했어요' : alerted.includes(i.id) ? '알림 받아요' : '신청했어요'}</Chip> : (
                 <Button variant="outline" pill onClick={() => {
-                  if (i.status === 'scheduled') { setAlerted((l) => [...l, i.id]); showToast('알림을 신청했어요'); } else setOpen(i);
+                  if (i.status !== 'scheduled') { setOpen(i); return; }
+                  api(`/api/campaigns/${i.id}/subscribe`, { method: 'POST', quiet: true })
+                    .then(() => { setAlerted((l) => [...l, i.id]); showToast('알림을 신청했어요'); })
+                    .catch((e) => showToast((e as Error).message || '알림을 신청하지 못했어요'));
                 }}>{label(i)}</Button>
               )}
             </div>

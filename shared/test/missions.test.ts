@@ -28,9 +28,15 @@ describe('missions', () => {
   test('daily progress', () => {
     const dates12 = range(8, 12); // 2/8 .. 2/19
     expect(progress(recordSlots('daily', '2027-02-08', 28), dates12, '2027-02-20'))
-      .toMatchObject({ done: 12, total: 28, dueSoFar: 13, streak: 0 });
+      .toMatchObject({ done: 12, total: 28, dueSoFar: 13, streak: 12 });
     expect(progress(recordSlots('daily', '2027-02-08', 28), dates12, '2027-02-19'))
       .toMatchObject({ done: 12, dueSoFar: 12, streak: 12 });
+  });
+  test('streak: today unrecorded keeps streak; today recorded extends; past gap resets', () => {
+    const slots = recordSlots('daily', '2027-02-08', 28);
+    expect(progress(slots, range(8, 13), '2027-02-20').streak).toBe(13); // today 2/20 recorded
+    expect(progress(slots, [...range(8, 3), ...range(12, 8)], '2027-02-20').streak).toBe(8); // 2/11 missed
+    expect(progress(slots, range(8, 11), '2027-02-20').streak).toBe(0); // 2/19 missed
   });
   test('weekly mission label & round', () => {
     expect(missionLabel('weekly')).toBe('이번 주 미션');

@@ -54,8 +54,15 @@ export function roundLabel(cycle: MissionCycle, round: number): string {
 export function progress(slots: ISODate[], recordedDates: ISODate[], today: ISODate) {
   const rec = new Set(recordedDates);
   const due = slots.filter((s) => s <= today);
+  // Consecutive recorded slots ending at the latest slot before today; today's own slot
+  // extends the streak when recorded but never breaks it while still open.
   let streak = 0;
-  for (let i = due.length - 1; i >= 0 && rec.has(due[i]); i--) streak++;
+  let i = due.length - 1;
+  if (i >= 0 && due[i] === today) {
+    if (rec.has(today)) streak++;
+    i--;
+  }
+  for (; i >= 0 && rec.has(due[i]); i--) streak++;
   return {
     done: slots.filter((s) => rec.has(s)).length,
     total: slots.length,

@@ -4,7 +4,7 @@ import { dueNotifications, type DueInput } from '@shared/notificationsDue';
 import { json, type Ctx, type Handler } from '../db';
 import { notify } from '../notify';
 import type { OfflineSettings, PracticeSettings } from '../campaignSettings';
-import { scheduleOf, settingsOf, type CampaignRow } from './campaigns';
+import { scheduleOf, settingsOf, statusOf, visibleTo, type CampaignRow } from './campaigns';
 import { readBody, requireUser } from './common';
 
 interface NotifRow { id: string; created_at: string; kind: string; text: string; link: string; read: number; sim_date: string | null }
@@ -83,6 +83,19 @@ export const syncNotifications: Handler = async (_req, ctx) => {
     for (const d of dueNotifications(input)) {
       await notify(ctx.db, uid, d.kind, d.text, `/campaigns/${d.campaignId}`, `${uid}:${d.dedupeKey}`, ctx.simDate);
     }
+  }
+  // 알림 받기: subscribed (while 모집 예정) campaigns whose recruiting has opened at the caller's date.
+  const subs = await ctx.db.all<CampaignRow & { sub_sim_date: string | null }>(
+    `SELECT c.*, s.sim_date sub_sim_date FROM campaign_subscriptions s JOIN campaigns c ON c.id = s.campaign_id
+     WHERE s.user_id = ? AND c.publish <> 'draft'`,
+    uid,
+  );
+  for (const c of subs) {
+    const st = statusOf(ctx, c);
+    if (st !== 'recruiting' || !visibleTo(ctx, c, st)) continue;
+    const start = scheduleOf(c).recruitStart;
+    if (c.sub_sim_date && start && c.sub_sim_date >= start) continue; // subscribed after it had opened
+    await notify(ctx.db, uid, 'recruit_open', `「${c.title}」 모집이 시작됐어요. 지금 신청할 수 있어요.`, `/campaigns/${c.id}`, `${uid}:recruit_open:${c.id}`, ctx.simDate);
   }
   return json({ unread: await unreadOf(ctx, uid) });
 };
