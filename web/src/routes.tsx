@@ -5,6 +5,11 @@ import { CalculatorPage } from './features/calculator/CalculatorPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { LoginPicker } from './features/auth/LoginPicker';
 import { OnboardingFlow } from './features/onboarding/OnboardingFlow';
+import { GroupListPage } from './features/groups/GroupListPage';
+import { NewGroupPage } from './features/groups/NewGroupPage';
+import { GroupDetail } from './features/groups/GroupDetail';
+import { GroupManage } from './features/groups/GroupManage';
+import { PostPage } from './features/groups/PostPage';
 
 /**
  * 화면 목록. 화면 작업(12–22)은 해당 줄의 element만 실제 화면으로 바꾼다.
@@ -14,10 +19,11 @@ export const platformRoutes: RouteObject[] = [
   { path: '/', element: <Placeholder title="홈" /> },
   { path: '/campaigns', element: <Placeholder title="캠페인" /> },
   { path: '/campaigns/:id', element: <Placeholder title="캠페인 자세히" /> },
-  { path: '/groups', element: <Placeholder title="모임" /> },
-  { path: '/groups/new', element: <Placeholder title="모임 열기" /> },
-  { path: '/groups/:id', element: <Placeholder title="모임" /> },
-  { path: '/groups/:id/manage', element: <Placeholder title="모임 관리" /> },
+  { path: '/groups', element: <GroupListPage /> },
+  { path: '/groups/new', element: <NewGroupPage /> },
+  { path: '/groups/:id', element: <GroupDetail /> },
+  { path: '/groups/:id/manage', element: <GroupManage /> },
+  { path: '/groups/:id/posts/:postId', element: <PostPage /> },
   { path: '/calculator', element: <CalculatorPage /> },
   { path: '/me', element: <Placeholder title="내 활동" /> },
   { path: '/me/settings', element: <Placeholder title="계정 설정" /> },

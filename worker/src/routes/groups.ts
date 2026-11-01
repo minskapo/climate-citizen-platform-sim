@@ -136,6 +136,7 @@ async function groupView(ctx: Ctx, g: GroupRow) {
     chatLink: isMember ? g.chat_link : undefined, // 단톡방 링크는 멤버에게만
     closedAt: g.closed_at,
     pendingTransferTo: isStaffRole(ctx, g.id, role) ? g.transfer_to : undefined,
+    pendingTransferExpires: isStaffRole(ctx, g.id, role) && g.transfer_to ? g.transfer_expires : undefined,
   };
 }
 
@@ -319,4 +320,23 @@ export const closeGroup: Handler = async (req, ctx, p) => {
   if (active) return fail(409, 'HAS_ACTIVE_CAMPAIGN', `「${active.title}」 캠페인이 있어서 닫을 수 없어요`);
   await ctx.db.run('UPDATE groups SET closed_at = ? WHERE id = ?', ctx.now, g.id);
   return json({ ok: true, closedAt: ctx.now });
+};
+
+/** 멤버 목록(운영진용): 가입 신청 대기 · 멤버 · 운영진 · 모임장. 막은 사람은 빼요. */
+export const listMembers: Handler = async (req, ctx, p) => {
+  const g = await getGroup(ctx, p.id);
+  if (!g || closedGone(ctx, g)) return NOT_FOUND();
+  const role = await memberRole(ctx, p.id, ctx.userId);
+  if (!isStaffRole(ctx, p.id, role) && ctx.role !== 'admin') return fail(403, 'NOT_STAFF', '운영진만 볼 수 있어요');
+  const q = (new URL(req.url).searchParams.get('q') ?? '').trim();
+  const rows = await ctx.db.all<{ user_id: string; role: string; sim_date: string | null; created_at: string; nickname: string; sido: string; sigungu: string }>(
+    `SELECT m.user_id, m.role, m.sim_date, m.created_at, u.nickname, u.sido, u.sigungu
+       FROM group_members m JOIN users u ON u.id = m.user_id
+      WHERE m.group_id = ? AND m.role IN ('owner','staff','member','pending') ${q ? "AND u.nickname LIKE ? ESCAPE '\\'" : ''}
+      ORDER BY CASE m.role WHEN 'pending' THEN 0 WHEN 'owner' THEN 1 WHEN 'staff' THEN 2 ELSE 3 END, m.created_at, m.rowid`,
+    ...(q ? [p.id, likeEscape(q)] : [p.id]),
+  );
+  return json({
+    items: rows.map((r) => ({ userId: r.user_id, nickname: r.nickname, region: r.sigungu || r.sido || '', role: r.role, joinedOn: r.sim_date ?? r.created_at.slice(0, 10) })),
+  });
 };

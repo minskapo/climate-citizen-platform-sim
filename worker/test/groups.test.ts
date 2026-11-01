@@ -115,4 +115,16 @@ describe('groups', () => {
       expect([method, path, r.status]).toEqual([method, path, 409]);
     }
   });
+
+  test('member list: staff only, pending first, nickname search', async () => {
+    const h = harness();
+    const owner = await user(h, '모임장'), u = await user(h, '신청자'), o = await user(h, '구경꾼');
+    const g = await group(h, owner, { joinPolicy: 'approval' });
+    await h.call('POST', `/api/groups/${g}/join`, as(u));
+    expect((await h.call('GET', `/api/groups/${g}/members`, as(o))).status).toBe(403);
+    const r = await (await h.call('GET', `/api/groups/${g}/members`, as(owner))).json();
+    expect(r.items.map((m: { role: string }) => m.role)).toEqual(['pending', 'owner']);
+    const q = await (await h.call('GET', `/api/groups/${g}/members?q=${encodeURIComponent('신청')}`, as(owner))).json();
+    expect(q.items).toHaveLength(1);
+  });
 });

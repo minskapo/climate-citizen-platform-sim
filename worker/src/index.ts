@@ -3,8 +3,9 @@ import { buildCtx, verifyToken } from './auth';
 import { countRequest, isBlocked } from './cap';
 import { d1Db, fail, type Db, type Env, type Handler } from './db';
 import { enter } from './routes/sim';
-import { acceptTransfer, closeGroup, createGroup, createInvite, getGroupRoute, joinGroup, leaveGroup, listGroups, memberAction, patchGroup, transferGroup } from './routes/groups';
+import { acceptTransfer, closeGroup, createGroup, createInvite, getGroupRoute, joinGroup, leaveGroup, listGroups, listMembers, memberAction, patchGroup, transferGroup } from './routes/groups';
 import { addComment, createPost, deletePost, getPost, hidePost, likePost, listPosts, patchPost, pinPost, popular, unhidePost, unpinPost } from './routes/posts';
+import { groupParticipants } from './routes/admin';
 import { getFile } from './routes/files';
 import {
   addCampaignFile, cloneCampaign, createBundle, createCampaign, deleteCampaignFile, getCampaign, getHero, importBundle, listBundles, listCampaigns,
@@ -47,6 +48,8 @@ export const routes: Route[] = [
   { method: 'POST', pattern: '/api/groups/:id/join', handler: joinGroup },
   { method: 'POST', pattern: '/api/groups/:id/leave', handler: leaveGroup },
   { method: 'POST', pattern: '/api/groups/:id/invites', handler: createInvite },
+  { method: 'GET', pattern: '/api/groups/:id/members', handler: listMembers },
+  { method: 'GET', pattern: '/api/groups/:id/campaigns/:cid/participants', handler: groupParticipants },
   { method: 'POST', pattern: '/api/groups/:id/members/:uid', handler: memberAction },
   { method: 'POST', pattern: '/api/groups/:id/transfer', handler: transferGroup },
   { method: 'POST', pattern: '/api/groups/:id/transfer/accept', handler: acceptTransfer },

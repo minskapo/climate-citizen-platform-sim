@@ -64,7 +64,7 @@ interface PartRow {
   checklist_json: string; start_measurement_id: string | null; nickname: string; sido: string; sigungu: string; user_consents: string; restricted: number;
 }
 
-async function partRows(ctx: Ctx, campaignId: string) {
+export async function partRows(ctx: Ctx, campaignId: string) {
   const rows = await ctx.db.all<PartRow>(
     `SELECT p.id, p.user_id, p.state, p.sim_date, p.created_at, p.companions, p.consents_json, p.answers_json, p.checklist_json, p.start_measurement_id,
             u.nickname, u.sido, u.sigungu, u.consents_json user_consents, u.restricted
@@ -281,4 +281,14 @@ export const restrictUser: Handler = async (req, ctx, p) => {
   if (!r.changes) return fail(404, 'USER_NOT_FOUND', '회원을 찾을 수 없어요');
   await audit(ctx, b.restricted ? 'user_restrict' : 'user_unrestrict', 'user', p.id);
   return json({ id: p.id, restricted: b.restricted });
+};
+
+/** 주최 모임 운영진용 참가자 기록 목록(내려받기 없음). */
+export const groupParticipants: Handler = async (_req, ctx, p) => {
+  const c = await ctx.db.first<{ id: string; host_group_id: string | null }>('SELECT id, host_group_id FROM campaigns WHERE id = ?', p.cid);
+  if (!c || c.host_group_id !== p.id) return fail(404, 'CAMPAIGN_NOT_FOUND', '캠페인을 찾을 수 없어요');
+  const role = await memberRole(ctx, p.id, ctx.userId);
+  if (!isStaffRole(ctx, p.id, role) && ctx.role !== 'admin') return fail(403, 'NOT_STAFF', '운영진만 볼 수 있어요');
+  const items = (await partRows(ctx, c.id)).filter((r) => r.state !== 'cancelled' && r.state !== 'waitlisted');
+  return json({ items: items.map((r) => ({ nickname: r.nickname, startTotal: r.startTotal, recordCount: r.recordCount })) });
 };
