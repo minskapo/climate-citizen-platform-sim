@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/ui';
 import { showToast } from '../../components/Toast';
-import { API_BASE, downloadBlob, simHeaders } from '../../lib/api';
+import { apiBlob, ApiError, downloadBlob } from '../../lib/api';
 
 /** 참가자 기록 내려받기: 운영용(활동명 포함) · 연구용(연구 활용에 동의한 사람만, 익명). 내려받으면 활동 기록에 남는다. */
 export function ExportModal({ campaignId, researchCount, onClose }: { campaignId: string; researchCount: number; onClose(): void }) {
@@ -14,14 +14,14 @@ export function ExportModal({ campaignId, researchCount, onClose }: { campaignId
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/campaigns/${campaignId}/export?kind=${kind}`, { headers: simHeaders() });
-      if (!res.ok) throw new Error('내려받지 못했어요');
+      // 공용 호출: 입장이 만료되면(401) 입장 화면으로 돌아간다.
+      const blob = await apiBlob(`/api/admin/campaigns/${campaignId}/export?kind=${kind}`, { quiet: true });
       // BOM이 붙은 CSV라 엑셀에서도 바로 열려요.
-      downloadBlob(await res.blob(), `participants-${kind}-${campaignId}.csv`);
+      downloadBlob(blob, `participants-${kind}-${campaignId}.csv`);
       showToast('참가자 기록을 내려받았어요 · CSV');
       onClose();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(e instanceof ApiError && e.code !== 'NETWORK' && e.status < 500 ? e.message : '내려받지 못했어요');
     } finally {
       setBusy(false);
     }

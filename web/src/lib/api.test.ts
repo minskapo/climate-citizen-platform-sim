@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { api, ApiError, simHeaders } from './api';
+import { api, apiBlob, ApiError, simHeaders } from './api';
 import { __reloadSimForTest, simStore } from './sim';
 
 const reply = (status: number, body: unknown) => vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
@@ -30,6 +30,12 @@ describe('api', () => {
   test('401 BAD_TOKEN drops the token (back to gate)', async () => {
     vi.stubGlobal('fetch', reply(401, { error: { code: 'BAD_TOKEN', message: 'x' } }));
     await expect(api('/api/me')).rejects.toBeInstanceOf(ApiError);
+    expect(simStore.get().token).toBeNull();
+  });
+
+  test('apiBlob: 401 BAD_TOKEN also drops the token (export returns to gate)', async () => {
+    vi.stubGlobal('fetch', reply(401, { error: { code: 'BAD_TOKEN', message: 'x' } }));
+    await expect(apiBlob('/api/admin/campaigns/c1/export?kind=ops', { quiet: true })).rejects.toBeInstanceOf(ApiError);
     expect(simStore.get().token).toBeNull();
   });
 

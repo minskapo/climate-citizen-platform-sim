@@ -55,6 +55,17 @@ async function readError(res: Response): Promise<ApiError> {
  *  - 503 DAILY_CAP: 「오늘 체험 한도에 가까워 잠시 멈췄어요」 토스트.
  *  - 403 RESTRICTED: 토스트. */
 export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
+  const res = await send(path, init);
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+/** 파일(CSV 등)을 받는 호출. 오류 처리(401 입장 만료 → 입장 화면 등)는 api()와 같다. */
+export async function apiBlob(path: string, init: ApiInit = {}): Promise<Blob> {
+  return (await send(path, init)).blob();
+}
+
+async function send(path: string, init: ApiInit): Promise<Response> {
   const headers = simHeaders(init.asUser);
   if (init.preview) headers['X-Preview'] = '1';
   if (init.body !== undefined) headers['Content-Type'] = 'application/json';
@@ -84,8 +95,7 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
     }
     throw err;
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  return res;
 }
 
 /** 입장 암호 확인. 맞으면 토큰을 저장한다. */

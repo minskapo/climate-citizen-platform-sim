@@ -5,6 +5,7 @@ import { ToastHost } from '../../components/Toast';
 import { __reloadSimForTest, simStore } from '../../lib/sim';
 import { AttendanceQrModal, QR_REFRESH_MS } from './AttendanceQrModal';
 import { DeliveryListPrint } from './DeliveryListPrint';
+import { ExportModal } from './ExportModal';
 import { OfflineRoster } from './OfflineRoster';
 import { dueLabel, ReportsCollab } from './ReportsCollab';
 import { SignersPage } from './SignersPage';
@@ -26,6 +27,7 @@ vi.mock('../../lib/api', () => ({
   API_BASE: '',
   simHeaders: () => ({}),
   downloadBlob: vi.fn(),
+  apiBlob: vi.fn(async (path: string) => { calls.push({ path }); return new Blob(['x']); }),
   api: vi.fn(async (path: string, opts?: Opts) => {
     calls.push({ path, opts });
     if (path === '/api/campaigns/o1') {
@@ -231,6 +233,16 @@ describe('reports and collab', () => {
     expect(await screen.findByText('3. 5.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /숨기기/ })).toBeNull();
     expect(screen.getByRole('button', { name: /문제 없음/ })).toBeTruthy();
+  });
+});
+
+describe('export', () => {
+  test('export goes through the shared api helper (401 handling)', async () => {
+    const onClose = vi.fn();
+    mount(<ExportModal campaignId="c9" researchCount={2} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: '내려받기' }));
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/admin/campaigns/c9/export?kind=ops')).toBe(true));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });
 
