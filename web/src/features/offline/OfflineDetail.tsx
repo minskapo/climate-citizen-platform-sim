@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { dDay, koLong, koShort } from '@shared/date';
 import { api } from '../../lib/api';
@@ -68,6 +68,11 @@ export function OfflineDetail({ detail, reload, completed, attended, notice }: {
   const loc = useLocation();
   const [attendedAt, setAttendedAt] = useState<string | null>(attended);
   const [noticeText, setNoticeText] = useState<string | null>(notice);
+  // 안내 띠는 한 번만: 보여 준 뒤 기록(state)에서 지워 뒤로 가기 · 새로고침에 다시 뜨지 않게 한다.
+  useEffect(() => {
+    if (notice) nav(loc.pathname + loc.search, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const dismiss = () => {
     setAttendedAt(null);
     nav(loc.pathname + loc.search, { replace: true, state: {} });

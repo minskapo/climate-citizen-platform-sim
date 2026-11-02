@@ -28,11 +28,16 @@ export function BeforeEvent({ detail, completed, onChanged, onPosted }: { detail
   const cancellable = canCancelNow(s, sim.today, sim.nowTime);
   const mapHref = `https://map.kakao.com/link/search/${encodeURIComponent(o.place.exact || o.place.public)}`;
 
-  const markDone = async (key: string) => {
+  /** 체크 표시를 저장한다. 성공 알림(ok)은 저장이 끝난 뒤에만, 실패하면 「저장하지 못했어요」. */
+  const markDone = async (key: string, ok?: string) => {
     try {
       await api(`/api/campaigns/${c.id}/checklist/${encodeURIComponent(key)}/done`, { method: 'POST', body: {}, quiet: true });
-      await onChanged();
-    } catch { /* 체크 표시는 다음에 */ }
+    } catch {
+      showToast('저장하지 못했어요');
+      return;
+    }
+    if (ok) showToast(ok);
+    await onChanged();
   };
 
   const sub = (e: ChecklistEntry): string => {
@@ -47,14 +52,14 @@ export function BeforeEvent({ detail, completed, onChanged, onPosted }: { detail
     if (e.key === 'place') return <a className="link-btn" href={mapHref} target="_blank" rel="noreferrer" onClick={() => void markDone(e.key)}>지도 보기 →</a>;
     if (e.key === 'calendar') {
       return (
-        <button type="button" className="link-btn" onClick={() => { downloadIcs(detail, sim.today); showToast('내 캘린더에 넣었어요'); void markDone(e.key); }}>
+        <button type="button" className="link-btn" onClick={() => { downloadIcs(detail, sim.today); void markDone(e.key, '내 캘린더에 넣었어요'); }}>
           {e.done ? '다시 받기 →' : '캘린더에 넣기 →'}
         </button>
       );
     }
     if (e.key === 'greet') return <button type="button" className="link-btn" onClick={() => setGreet(true)}>인사 쓰기 →</button>;
     if (e.key === 'supplies') {
-      return e.done ? null : <button type="button" className="link-btn" onClick={() => { showToast('준비물 확인을 체크했어요'); void markDone(e.key); }}>확인했어요 →</button>;
+      return e.done ? null : <button type="button" className="link-btn" onClick={() => void markDone(e.key, '준비물 확인을 체크했어요')}>확인했어요 →</button>;
     }
     if (e.linkType === 'url' && e.target) return <a className="link-btn" href={e.target} target="_blank" rel="noreferrer" onClick={() => void markDone(e.key)}>열기 ↗</a>;
     if (e.linkType === 'post' && e.target) return <Link className="link-btn" to={postPath(c.id, e.target)} onClick={() => void markDone(e.key)}>읽기 →</Link>;

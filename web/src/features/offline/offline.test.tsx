@@ -10,6 +10,7 @@ import { buildIcs } from './util';
 let detail: Record<string, unknown> = {};
 let attendance: { at: string; method: string } | null = null;
 let nextItems: Array<Record<string, unknown>> = [];
+let failChecklist = false;
 const calls: Array<{ path: string; opts?: { method?: string; body?: Record<string, unknown> } }> = [];
 vi.mock('../../lib/api', () => ({
   ApiError: class extends Error { status = 0; },
@@ -19,6 +20,7 @@ vi.mock('../../lib/api', () => ({
   api: vi.fn(async (path: string, opts?: { method?: string; body?: Record<string, unknown> }) => {
     calls.push({ path, opts });
     if (path === '/api/campaigns/c1') return detail;
+    if (failChecklist && path.includes('/checklist/')) throw new Error('network');
     if (path === '/api/campaigns/c1/attend') return { attended: true, at: '2027-01-25T13:32', method: 'qr' };
     if (path === '/api/participations/p1') return { participation: { id: 'p1', attendance } };
     if (path.startsWith('/api/campaigns?')) return { items: nextItems };
@@ -48,7 +50,7 @@ function makeDetail(over: { mine?: Record<string, unknown> | null; exact?: strin
 
 function Where() {
   const l = useLocation();
-  return <p data-testid="where">{l.pathname}{l.search}</p>;
+  return <p data-testid="where" data-state={JSON.stringify(l.state ?? null)}>{l.pathname}{l.search}</p>;
 }
 
 const open = (date: string, time: string | null = null, url = '/campaigns/c1') => {
@@ -65,6 +67,7 @@ const open = (date: string, time: string | null = null, url = '/campaigns/c1') =
 };
 
 beforeEach(() => {
+  failChecklist = false;
   calls.length = 0;
   localStorage.clear();
   __reloadSimForTest();
@@ -96,6 +99,18 @@ describe('offline campaign', () => {
     expect(await screen.findByText('준비물 확인을 체크했어요')).toBeTruthy();
   });
 
+  test('checklist toast only after the request succeeds; failure says 저장하지 못했어요', async () => {
+    failChecklist = true;
+    detail = makeDetail({ mine: {}, checklist: [{ key: 'supplies', kind: 'auto', label: '준비물 확인', done: false }] });
+    open('2027-01-19');
+    // 앞 테스트의 알림(모듈 전역)이 사라질 때까지 기다린다.
+    await waitFor(() => expect(screen.queryByText('준비물 확인을 체크했어요')).toBeNull(), { timeout: 3000 });
+    fireEvent.click(await screen.findByRole('button', { name: '확인했어요 →' }));
+    expect(await screen.findByText('저장하지 못했어요')).toBeTruthy();
+    expect(screen.queryByText('준비물 확인을 체크했어요')).toBeNull();
+    failChecklist = false;
+  });
+
   test('attend link with code auto-submits', async () => {
     detail = makeDetail({ mine: {} });
     open('2027-01-25', '13:30', '/attend/c1?code=123456');
@@ -108,6 +123,9 @@ describe('offline campaign', () => {
     open('2027-01-25', '13:30', '/attend/c1?code=123456');
     expect(await screen.findByText(/신청이 확정된 참가자만 출석할 수 있어요/)).toBeTruthy();
     expect(calls.some((c) => c.path === '/api/campaigns/c1/attend')).toBe(false);
+    // 한 번 보여 준 뒤에는 기록(state)에서 지워 뒤로 가기 · 새로고침에 다시 뜨지 않게
+    await waitFor(() => expect(screen.getByTestId('where').getAttribute('data-state')).toBe('null'));
+    expect(screen.getByText(/신청이 확정된 참가자만 출석할 수 있어요/)).toBeTruthy();
   });
 
   test('attendance closed outside window shows opening time', async () => {
