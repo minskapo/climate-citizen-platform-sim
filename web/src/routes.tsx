@@ -20,6 +20,10 @@ import { AttendRoute } from './features/offline/AttendRoute';
 import { Certificate } from './features/offline/Certificate';
 import { CampaignPostPage } from './features/campaigns/CampaignPostPage';
 import { PageToolView } from './features/sandbox/PageToolView';
+import { AdminLayout, AdminPlaceholder } from './features/admin/AdminLayout';
+import { AdminHome } from './features/admin/AdminHome';
+import { CampaignAdminList } from './features/admin/CampaignAdminList';
+import { CampaignEditor } from './features/admin/editor/CampaignEditor';
 
 /**
  * 화면 목록. 화면 작업(12–22)은 해당 줄의 element만 실제 화면으로 바꾼다.
@@ -51,7 +55,25 @@ export const platformRoutes: RouteObject[] = [
 
 /** 관리자 화면(M 계열)은 자체 옆 메뉴를 쓰므로 플랫폼 헤더 · 푸터 없이 둔다. */
 export const adminRoutes: RouteObject[] = [
-  { path: '/admin/*', element: <Placeholder title="관리자" /> },
+  {
+    path: '/admin',
+    element: <AdminLayout />,
+    children: [
+      { index: true, element: <AdminHome /> },
+      { path: 'campaigns', element: <CampaignAdminList /> },
+      { path: 'campaigns/new', element: <CampaignEditor /> },
+      { path: 'campaigns/:id/edit', element: <CampaignEditor /> },
+      // Task 21: 참가자 관리 · 웹 도구 · 신고 · 협업 제안 · 모임 · 회원 · 데이터
+      { path: 'campaigns/:id/participants', element: <AdminPlaceholder title="참가자" /> },
+      { path: 'tools/*', element: <AdminPlaceholder title="웹 도구" /> },
+      { path: 'groups', element: <AdminPlaceholder title="모임" /> },
+      { path: 'reports', element: <AdminPlaceholder title="신고" /> },
+      { path: 'collab', element: <AdminPlaceholder title="협업 제안" /> },
+      { path: 'users', element: <AdminPlaceholder title="회원" /> },
+      { path: 'data', element: <AdminPlaceholder title="데이터 · 통계" /> },
+      { path: '*', element: <AdminPlaceholder title="찾을 수 없는 화면" /> },
+    ],
+  },
 ];
 
 export const routes: RouteObject[] = [

@@ -9,7 +9,7 @@ import { groupParticipants } from './routes/admin';
 import { getFile } from './routes/files';
 import {
   addCampaignFile, cloneCampaign, createBundle, createCampaign, deleteCampaignFile, getCampaign, getHero, importBundle, listBundles, listCampaigns,
-  patchCampaignFile, publishCampaign, putCampaignTools, putChecklist, putExplainer, putMissions, subscribeCampaign, unsubscribeCampaign, updateCampaign,
+  patchCampaignFile, publishCampaign, putCampaignTools, putCampaignImage, putChecklist, putExplainer, putMissions, subscribeCampaign, unsubscribeCampaign, updateCampaign,
 } from './routes/campaigns';
 import { createReport } from './routes/reports';
 import { listNotifications, readNotifications, syncNotifications } from './routes/notifications';
@@ -82,6 +82,7 @@ export const routes: Route[] = [
   { method: 'PATCH', pattern: '/api/campaigns/:id/files/:fileId', handler: patchCampaignFile },
   { method: 'DELETE', pattern: '/api/campaigns/:id/files/:fileId', handler: deleteCampaignFile },
   { method: 'PUT', pattern: '/api/campaigns/:id/tools', handler: putCampaignTools },
+  { method: 'PUT', pattern: '/api/campaigns/:id/image', handler: putCampaignImage },
   { method: 'PUT', pattern: '/api/campaigns/:id/explainer', handler: putExplainer },
   { method: 'GET', pattern: '/api/mission-bundles', handler: listBundles },
   { method: 'POST', pattern: '/api/mission-bundles', handler: createBundle },

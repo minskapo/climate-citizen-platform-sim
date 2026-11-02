@@ -4,7 +4,7 @@ import { simNowTime, simStore, simToday } from './sim';
 export const API_BASE: string = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') || 'https://climate-sim.minskapo.workers.dev';
 
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string) {
+  constructor(public status: number, public code: string, message: string, public field?: string) {
     super(message);
     this.name = 'ApiError';
   }
@@ -43,8 +43,8 @@ export function simHeaders(asUser = false): Record<string, string> {
 
 async function readError(res: Response): Promise<ApiError> {
   try {
-    const b = (await res.json()) as { error?: { code?: string; message?: string } };
-    return new ApiError(res.status, b.error?.code ?? `HTTP_${res.status}`, b.error?.message ?? '요청을 처리하지 못했어요');
+    const b = (await res.json()) as { error?: { code?: string; message?: string; field?: string } };
+    return new ApiError(res.status, b.error?.code ?? `HTTP_${res.status}`, b.error?.message ?? '요청을 처리하지 못했어요', b.error?.field);
   } catch {
     return new ApiError(res.status, `HTTP_${res.status}`, '요청을 처리하지 못했어요');
   }

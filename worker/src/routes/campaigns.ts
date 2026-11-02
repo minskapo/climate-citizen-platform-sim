@@ -292,6 +292,7 @@ const draftOf = (r: CampaignRow): Draft => ({
 });
 
 const COMMON_KEYS = ['mode', 'slots', 'blockToolId', 'heroEnabled'] as const;
+const OPTIONAL_SETTING_KEYS = ['numberUnit', 'numberGoal', 'customQuestion'] as const;
 
 /** Applies a (partial) editor payload onto a draft. Settings merge shallowly over the current ones. */
 async function applyEdits(ctx: Ctx, cur: Draft, body: Record<string, unknown>, locked: boolean): Promise<Draft | Response> {
@@ -333,6 +334,9 @@ async function applyEdits(ctx: Ctx, cur: Draft, body: Record<string, unknown>, l
   if (body.settings !== undefined) {
     if (!body.settings || typeof body.settings !== 'object' || Array.isArray(body.settings)) return invalid('settings', '설정 형식이 올바르지 않아요');
     d.settings = { ...d.settings, ...(body.settings as object) } as CampaignSettings;
+    // Optional keys: null clears them (a shallow merge cannot drop a key otherwise).
+    const merged = d.settings as unknown as Record<string, unknown>;
+    for (const k of OPTIONAL_SETTING_KEYS) if (merged[k] === null) delete merged[k];
   }
   const s = d.settings as unknown as Record<string, unknown>;
   s.hostLink = d.host_group_id ? 'linked' : 'none';
@@ -711,6 +715,34 @@ export const deleteCampaignFile: Handler = async (_req, ctx, p) => {
   // Clones share file rows; drop the blob only when no campaign links it any more.
   await ctx.db.run('DELETE FROM files WHERE id = ? AND post_id IS NULL AND NOT EXISTS (SELECT 1 FROM campaign_files WHERE file_id = ?)', p.fileId, p.fileId);
   return json({ ok: true });
+};
+
+const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+/** 대표 이미지 바꾸기: { mime, dataBase64 }. The old blob is dropped when no other campaign (clones) uses it. */
+export const putCampaignImage: Handler = async (req, ctx, p) => {
+  const r = await loadForAdmin(ctx, p.id);
+  if (r instanceof Response) return r;
+  const body = await readBody(req);
+  if (!body) return fail(400, 'BAD_JSON', '요청 형식이 올바르지 않아요');
+  const mime = str(body.mime);
+  if (!IMAGE_MIMES.includes(mime)) return invalid('imageFileId', '이미지 파일만 올릴 수 있어요');
+  const data = typeof body.dataBase64 === 'string' ? decodeBase64(body.dataBase64) : null;
+  if (!data || data.byteLength === 0) return fail(400, 'BAD_ATTACHMENT', '이미지를 읽을 수 없어요');
+  if (!checkFileSize(data.byteLength)) return fail(413, 'FILE_TOO_LARGE', '파일은 1MB 이하만 올릴 수 있어요');
+  const fileId = nanoid();
+  const old = r.image_file_id;
+  const stmts: Array<[string, unknown[]]> = [
+    ['INSERT INTO files (id, created_at, mime, bytes, data, owner_id, sim_date) VALUES (?,?,?,?,?,?,?)',
+      [fileId, ctx.now, mime, data.byteLength, data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), ctx.userId, ctx.simDate]],
+    ['UPDATE campaigns SET image_file_id = ? WHERE id = ?', [fileId, r.id]],
+  ];
+  if (old) {
+    stmts.push(['DELETE FROM files WHERE id = ? AND post_id IS NULL AND record_id IS NULL AND NOT EXISTS (SELECT 1 FROM campaigns WHERE image_file_id = ?) AND NOT EXISTS (SELECT 1 FROM campaign_files WHERE file_id = ?)',
+      [old, old, old]]);
+  }
+  await ctx.db.batch(stmts);
+  return json(await detail(ctx, (await loadCampaign(ctx, r.id))!));
 };
 
 export const putCampaignTools: Handler = async (req, ctx, p) => {

@@ -325,4 +325,33 @@ describe('campaigns', () => {
     expect((await h.call('GET', `/api/files/${f.id}`, viewer)).status).toBe(200);
     expect((await h.call('GET', `/api/files/${f.id}`, admin)).status).toBe(200);
   });
+  test('PUT image sets the cover image; replacing keeps blobs other campaigns still use', async () => {
+    const { h, admin, practice } = await setup();
+    const id = await practice();
+    const png = Buffer.from('img').toString('base64');
+    expect((await h.call('PUT', `/api/campaigns/${id}/image`, { ...admin, body: { mime: 'image/svg+xml', dataBase64: png } })).status).toBe(400);
+    const r = await h.call('PUT', `/api/campaigns/${id}/image`, { ...admin, body: { mime: 'image/jpeg', dataBase64: png } });
+    expect(r.status).toBe(200);
+    const first = (await r.json()).campaign.imageFileId as string;
+    expect(first).toBeTruthy();
+    expect((await h.call('GET', `/api/files/${first}`, admin)).status).toBe(200);
+    const clone = (await (await h.call('POST', `/api/campaigns/${id}/clone`, { ...admin, body: {} })).json()).campaign;
+    expect(clone.imageFileId).toBe(first);
+    const second = (await (await h.call('PUT', `/api/campaigns/${id}/image`, { ...admin, body: { mime: 'image/jpeg', dataBase64: png } })).json()).campaign.imageFileId;
+    expect(second).not.toBe(first);
+    expect((await h.call('GET', `/api/files/${first}`, admin)).status).toBe(200); // clone still uses it
+    await h.call('PUT', `/api/campaigns/${clone.id}/image`, { ...admin, body: { mime: 'image/jpeg', dataBase64: png } });
+    expect((await h.call('GET', `/api/files/${first}`, admin)).status).toBe(404);
+    const u = await user(h, '회원');
+    expect((await h.call('PUT', `/api/campaigns/${id}/image`, { ...as(u), body: { mime: 'image/jpeg', dataBase64: png } })).status).toBe(403);
+  });
+  test('null clears optional settings keys', async () => {
+    const { h, admin, create } = await setup();
+    const id = await create({ type: 'offline', title: '옥상 탐방', settings: { customQuestion: '계단을 오를 수 있나요?' } });
+    const before = (await (await h.call('GET', `/api/campaigns/${id}`, admin)).json()).campaign.settings;
+    expect(before.customQuestion).toBe('계단을 오를 수 있나요?');
+    const r = await h.call('PUT', `/api/campaigns/${id}`, { ...admin, body: { settings: { customQuestion: null } } });
+    expect(r.status).toBe(200);
+    expect((await r.json()).campaign.settings.customQuestion).toBeUndefined();
+  });
 });
