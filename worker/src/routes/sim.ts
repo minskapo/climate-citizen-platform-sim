@@ -18,5 +18,5 @@ export async function enter(req: Request, env: Env, db: Db): Promise<Response> {
     await recordEnterFail(db, key);
     return fail(401, 'BAD_PASSCODE', '입장 코드가 맞지 않아요');
   }
-  return json({ token: await issueToken(env.TOKEN_SECRET, Date.now()) });
+  return json({ token: await issueToken(env.TOKEN_SECRET, Date.now(), env.SIM_PASSCODE) });
 }

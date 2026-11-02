@@ -20,7 +20,7 @@ export function harness(): Harness {
     env,
     async call(method, path, opts = {}) {
       const headers: Record<string, string> = { ...(opts.headers ?? {}) };
-      const token = opts.token === undefined ? await issueToken(env.TOKEN_SECRET, Date.now()) : opts.token;
+      const token = opts.token === undefined ? await issueToken(env.TOKEN_SECRET, Date.now(), env.SIM_PASSCODE) : opts.token;
       if (token) headers['X-Sim-Token'] = token;
       if (opts.body !== undefined) headers['content-type'] = 'application/json';
       const req = new Request('https://x.test' + path, {

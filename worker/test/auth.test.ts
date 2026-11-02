@@ -30,18 +30,34 @@ describe('auth', () => {
 
   test('expired token (31 days) → 401', async () => {
     const h = harness();
-    const old = await issueToken(h.env.TOKEN_SECRET, Date.now() - 31 * DAY);
+    const old = await issueToken(h.env.TOKEN_SECRET, Date.now() - 31 * DAY, h.env.SIM_PASSCODE);
     const res = await h.call('GET', '/api/users', { token: old });
+    expect(res.status).toBe(401);
+  });
+
+  test('token issued under passcode A fails under passcode B', async () => {
+    const now = Date.now();
+    const t = await issueToken('s', now, 'pass-A');
+    expect(await verifyToken('s', t, now, 'pass-A')).toBe(true);
+    expect(await verifyToken('s', t, now, 'pass-B')).toBe(false);
+  });
+
+  test('rotating SIM_PASSCODE alone logs everyone out', async () => {
+    const h = harness();
+    const { token } = await (await h.call('POST', '/api/enter', { body: { passcode: 'test-pass' }, token: null })).json();
+    const { handle } = await import('../src/index');
+    const rotated = { ...h.env, SIM_PASSCODE: 'rotated-pass' };
+    const res = await handle(new Request('https://x.test/api/users', { headers: { 'X-Sim-Token': token } }), rotated, h.db);
     expect(res.status).toBe(401);
   });
 
   test('token verification', async () => {
     const now = Date.now();
-    const t = await issueToken('s', now);
-    expect(await verifyToken('s', t, now + 29 * DAY)).toBe(true);
-    expect(await verifyToken('s', t, now + 31 * DAY)).toBe(false);
-    expect(await verifyToken('other', t, now)).toBe(false);
-    expect(await verifyToken('s', 'garbage', now)).toBe(false);
+    const t = await issueToken('s', now, 'p');
+    expect(await verifyToken('s', t, now + 29 * DAY, 'p')).toBe(true);
+    expect(await verifyToken('s', t, now + 31 * DAY, 'p')).toBe(false);
+    expect(await verifyToken('other', t, now, 'p')).toBe(false);
+    expect(await verifyToken('s', 'garbage', now, 'p')).toBe(false);
   });
 
   test('sim header validation', async () => {
@@ -70,12 +86,12 @@ describe('auth', () => {
 
   test('tampered token MAC or timestamp is rejected', async () => {
     const now = Date.now();
-    const t = await issueToken('s', now);
+    const t = await issueToken('s', now, 'p');
     const [ts, mac] = t.split('.');
     const flipped = mac.slice(0, -1) + (mac.endsWith('0') ? '1' : '0');
-    expect(await verifyToken('s', `${ts}.${flipped}`, now)).toBe(false);
-    expect(await verifyToken('s', `${Number(ts) + 1000}.${mac}`, now + 2000)).toBe(false);
-    expect(await verifyToken('s', `${Number(ts) + 10 * DAY}.${mac}`, now)).toBe(false);
+    expect(await verifyToken('s', `${ts}.${flipped}`, now, 'p')).toBe(false);
+    expect(await verifyToken('s', `${Number(ts) + 1000}.${mac}`, now + 2000, 'p')).toBe(false);
+    expect(await verifyToken('s', `${Number(ts) + 10 * DAY}.${mac}`, now, 'p')).toBe(false);
   });
 
   test('enter throttles per IP: 11th failed attempt → 429 without checking passcode', async () => {

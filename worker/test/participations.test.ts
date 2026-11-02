@@ -322,7 +322,7 @@ describe('my participations is light', () => {
     } as typeof db;
     const { handle } = await import('../src/index');
     const { issueToken } = await import('../src/auth');
-    const token = await issueToken(h.env.TOKEN_SECRET, Date.now());
+    const token = await issueToken(h.env.TOKEN_SECRET, Date.now(), h.env.SIM_PASSCODE);
     const res = await handle(new Request('https://x.test/api/me/participations', { headers: { 'X-Sim-Token': token, 'X-User-Id': u, 'X-Sim-Date': '2027-02-10', 'X-Sim-Time': '12:00' } }), h.env, counted);
     const b = await res.json() as { items: Array<{ missions: unknown[] }> };
     expect(b.items).toHaveLength(8);

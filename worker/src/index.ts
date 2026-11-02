@@ -196,7 +196,7 @@ async function route(req: Request, env: Env, db: Db): Promise<Response> {
 
   const token = req.headers.get('X-Sim-Token');
   if (!token) return fail(401, 'NO_TOKEN', '입장 코드를 먼저 입력해 주세요');
-  if (!(await verifyToken(env.TOKEN_SECRET, token, Date.now()))) {
+  if (!(await verifyToken(env.TOKEN_SECRET, token, Date.now(), env.SIM_PASSCODE ?? ''))) {
     return fail(401, 'BAD_TOKEN', '입장 시간이 지났어요. 다시 입장해 주세요');
   }
 

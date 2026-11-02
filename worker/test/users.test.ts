@@ -57,7 +57,7 @@ describe('users', () => {
         headers: { 'content-type': 'application/json', 'X-User-Id': u.id, 'X-Sim-Token': tokenHolder.t },
         body: JSON.stringify({ nickname: '새이름' }),
       });
-    const tokenHolder = { t: await (await import('../src/auth')).issueToken(h.env.TOKEN_SECRET, Date.now()) };
+    const tokenHolder = { t: await (await import('../src/auth')).issueToken(h.env.TOKEN_SECRET, Date.now(), h.env.SIM_PASSCODE) };
     const uniq = await handle(req(), h.env, racy(h.db, new Error('UNIQUE constraint failed: users.nickname'), true));
     expect(uniq.status).toBe(409);
     const other = await handle(req(), h.env, racy(h.db, new Error('disk I/O error'), true));

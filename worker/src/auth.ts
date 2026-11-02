@@ -20,17 +20,27 @@ export function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function issueToken(secret: string, nowMs: number): Promise<string> {
-  const issuedAt = String(Math.floor(nowMs));
-  return `${issuedAt}.${await hmacHex(secret, issuedAt)}`;
+async function sha256Hex(s: string): Promise<string> {
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(s)));
+  return [...d].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function verifyToken(secret: string, token: string, nowMs: number): Promise<boolean> {
+/** MAC input binds the token to the current passcode so rotating SIM_PASSCODE logs everyone out. */
+async function tokenMac(secret: string, issuedAt: string, passcode: string): Promise<string> {
+  return hmacHex(secret, `${issuedAt}.${await sha256Hex(passcode)}`);
+}
+
+export async function issueToken(secret: string, nowMs: number, passcode: string): Promise<string> {
+  const issuedAt = String(Math.floor(nowMs));
+  return `${issuedAt}.${await tokenMac(secret, issuedAt, passcode)}`;
+}
+
+export async function verifyToken(secret: string, token: string, nowMs: number, passcode: string): Promise<boolean> {
   const m = /^(\d{1,15})\.([0-9a-f]{64})$/.exec(token);
   if (!m) return false;
   const issuedAt = Number(m[1]);
   if (nowMs - issuedAt > THIRTY_DAYS_MS || issuedAt - nowMs > 60_000) return false;
-  return safeEqual(await hmacHex(secret, m[1]), m[2]);
+  return safeEqual(await tokenMac(secret, m[1], passcode), m[2]);
 }
 
 export function isRealDate(s: string): boolean {
