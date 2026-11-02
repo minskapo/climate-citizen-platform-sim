@@ -2,12 +2,13 @@ import { nanoid } from 'nanoid';
 import { fail, json, type Handler } from '../db';
 import { notify } from '../notify';
 import { createDraft } from './campaigns';
-import { DAY_MS, readBody, requireAdmin, requireUser, str } from './common';
+import { addDays } from '@shared/date';
+import { readBody, requireAdmin, requireUser, str } from './common';
 import { isStaffRole, memberRole } from './groups';
 
 const len = (s: string) => [...s].length;
 
-/** 협업 제안 보내기: due_at is a real-time deadline (+24h) for the admin reply. */
+/** 협업 제안 보내기: due_at is the proposer's sim date/time + 24h ("YYYY-MM-DDTHH:MM", sim wall clock). */
 export const createCollab: Handler = async (req, ctx) => {
   const uid = requireUser(ctx);
   if (uid instanceof Response) return uid;
@@ -25,7 +26,7 @@ export const createCollab: Handler = async (req, ctx) => {
     if (!isStaffRole(ctx, groupId, await memberRole(ctx, groupId, uid))) return fail(403, 'NOT_STAFF', '모임 운영진만 모임 이름으로 제안할 수 있어요');
   }
   const id = nanoid();
-  const dueAt = new Date(Date.parse(ctx.now) + DAY_MS).toISOString();
+  const dueAt = `${addDays(ctx.simDate, 1)}T${ctx.simTime}`;
   await ctx.db.run(
     'INSERT INTO collab_proposals (id, created_at, from_group_id, body, status, due_at, sim_date, title, period, size, author_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
     id, ctx.now, groupId, idea, 'open', dueAt, ctx.simDate, title, period, size, uid,
@@ -33,7 +34,7 @@ export const createCollab: Handler = async (req, ctx) => {
   return json({ id, dueAt, status: 'open' }, 201);
 };
 
-interface CollabRow { id: string; created_at: string; from_group_id: string | null; campaign_id: string | null; body: string; status: string; due_at: string | null; title: string; period: string; size: string; author_id: string | null }
+interface CollabRow { id: string; created_at: string; sim_date: string | null; from_group_id: string | null; campaign_id: string | null; body: string; status: string; due_at: string | null; title: string; period: string; size: string; author_id: string | null }
 
 export const listCollab: Handler = async (_req, ctx) => {
   const denied = requireAdmin(ctx);
@@ -48,7 +49,7 @@ export const listCollab: Handler = async (_req, ctx) => {
   );
   return json({
     items: rows.map((r) => ({
-      id: r.id, title: r.title, idea: r.body, period: r.period, size: r.size, status: r.status, dueAt: r.due_at, createdAt: r.created_at,
+      id: r.id, title: r.title, idea: r.body, period: r.period, size: r.size, status: r.status, dueAt: r.due_at, createdAt: r.created_at, simDate: r.sim_date,
       author: r.author, groupId: r.from_group_id, groupName: r.group_name, campaignId: r.campaign_id,
       replies: replies.filter((x) => x.proposal_id === r.id).map((x) => ({ id: x.id, body: x.body, createdAt: x.created_at })),
     })),

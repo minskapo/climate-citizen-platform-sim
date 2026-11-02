@@ -236,15 +236,15 @@ const TARGET_TABLE: Record<string, string> = { post: 'posts', comment: 'comments
 export const adminReports: Handler = async (_req, ctx) => {
   const denied = requireAdmin(ctx);
   if (denied) return denied;
-  const rows = await ctx.db.all<{ id: string; created_at: string; target_type: string; target_id: string; reason: string; status: string; reporter: string | null }>(
-    `SELECT r.id, r.created_at, r.target_type, r.target_id, r.reason, r.status, u.nickname reporter FROM reports r LEFT JOIN users u ON u.id = r.reporter_id
+  const rows = await ctx.db.all<{ id: string; created_at: string; sim_date: string | null; target_type: string; target_id: string; reason: string; status: string; reporter: string | null }>(
+    `SELECT r.id, r.created_at, r.sim_date, r.target_type, r.target_id, r.reason, r.status, u.nickname reporter FROM reports r LEFT JOIN users u ON u.id = r.reporter_id
      ORDER BY (r.status = 'open') DESC, r.created_at DESC LIMIT 200`);
   const items = [];
   for (const r of rows) {
     const t = TARGET_TABLE[r.target_type];
     const target = t ? await ctx.db.first<Record<string, unknown>>(`SELECT * FROM ${t} WHERE id = ?`, r.target_id) : null;
     items.push({
-      id: r.id, targetType: r.target_type, targetId: r.target_id, reason: r.reason, status: r.status, createdAt: r.created_at, reporter: r.reporter,
+      id: r.id, targetType: r.target_type, targetId: r.target_id, reason: r.reason, status: r.status, createdAt: r.created_at, simDate: r.sim_date, reporter: r.reporter,
       preview: target ? String(target.title ?? target.body ?? target.name ?? '').slice(0, 120) : null,
       targetHidden: target ? !!target.hidden : null,
     });
@@ -283,11 +283,11 @@ export const resolveReport: Handler = async (req, ctx, p) => {
 export const adminGroups: Handler = async (_req, ctx) => {
   const denied = requireAdmin(ctx);
   if (denied) return denied;
-  const rows = await ctx.db.all<{ id: string; name: string; join_policy: string; sido: string; closed_at: string | null; created_at: string; members: number }>(
-    `SELECT g.id, g.name, g.join_policy, g.sido, g.closed_at, g.created_at,
+  const rows = await ctx.db.all<{ id: string; name: string; join_policy: string; sido: string; closed_at: string | null; created_at: string; sim_date: string | null; members: number }>(
+    `SELECT g.id, g.name, g.join_policy, g.sido, g.closed_at, g.created_at, g.sim_date,
             (SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id AND m.role IN ('owner','staff','member')) members
      FROM groups g ORDER BY g.created_at DESC LIMIT 500`);
-  return json({ items: rows.map((g) => ({ id: g.id, name: g.name, joinPolicy: g.join_policy, region: g.sido, memberCount: g.members, closedAt: g.closed_at, createdAt: g.created_at })) });
+  return json({ items: rows.map((g) => ({ id: g.id, name: g.name, joinPolicy: g.join_policy, region: g.sido, memberCount: g.members, closedAt: g.closed_at, createdAt: g.created_at, simDate: g.sim_date })) });
 };
 
 /** Same rule as the owner's close: blocked while the group hosts a live campaign. */

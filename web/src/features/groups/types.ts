@@ -2,7 +2,7 @@ export type JoinPolicy = 'open' | 'approval' | 'private';
 export interface CampaignBadge { id: string; title: string; status: string }
 export interface GroupView {
   id: string; name: string; sido: string; sigungu: string; joinPolicy: JoinPolicy; myRole: string | null; closed: boolean;
-  description?: string; createdAt?: string; categories?: string[]; memberCount?: number; staffCount?: number; newPostsThisWeek?: number;
+  description?: string; createdAt?: string; simDate?: string | null; categories?: string[]; memberCount?: number; staffCount?: number; newPostsThisWeek?: number;
   campaign?: CampaignBadge | null; chatLink?: string; closedAt?: string | null; pendingTransferTo?: string | null; pendingTransferExpires?: string | null;
 }
 export const POLICY_LABEL: Record<JoinPolicy, string> = { open: '누구나', approval: '가입 승인', private: '비공개' };

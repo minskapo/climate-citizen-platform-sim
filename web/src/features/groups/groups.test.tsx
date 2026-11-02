@@ -45,6 +45,12 @@ beforeEach(() => {
 });
 
 describe('groups', () => {
+  test('「개설」 date shows the creator\'s sim date, not the real creation time', async () => {
+    group = { ...full, myRole: 'member', createdAt: '2026-11-02T01:00:00.000Z', simDate: '2027-04-01' };
+    open('/groups/g1');
+    expect(await screen.findByText(/4\. 1\.\(목\) 개설/)).toBeInTheDocument();
+  });
+
   test('private group visible by name only; invite link joins', async () => {
     group = { id: 'g1', name: '비공개 모임', sido: '강원', sigungu: '', joinPolicy: 'private', myRole: null, closed: false };
     open('/groups/g1?invite=abc123');

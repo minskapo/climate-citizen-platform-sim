@@ -5,28 +5,36 @@ import { Modal } from '../../components/Modal';
 import { Button, Chip, LoadError, Spinner } from '../../components/ui';
 import { showToast } from '../../components/Toast';
 import { api, ApiError } from '../../lib/api';
+import { useSim } from '../../lib/sim';
+import { addDays } from '@shared/date';
+import type { HHMM, ISODate } from '@shared/types';
 import { useAdminCrumbs } from './AdminLayout';
 import { FilterTabs } from './participantsCommon';
 
-interface Report { id: string; targetType: string; reason: string; status: string; createdAt: string; reporter: string | null; preview: string | null; targetHidden: boolean | null }
+interface Report { id: string; targetType: string; reason: string; status: string; createdAt: string; simDate?: string | null; reporter: string | null; preview: string | null; targetHidden: boolean | null }
 interface Collab {
-  id: string; title: string; idea: string; period: string; size: string; status: string; dueAt: string | null; createdAt: string;
+  id: string; title: string; idea: string; period: string; size: string; status: string; dueAt: string | null; createdAt: string; simDate?: string | null;
   author: string | null; groupName: string | null; campaignId: string | null; replies: Array<{ id: string; body: string }>;
 }
 const TARGET: Record<string, string> = { post: '게시글', comment: '댓글', group: '모임' };
 const REASONS = ['광고', '저작권', '괴롭힘', '개인정보', '기타'];
-const md = (iso: string) => { const d = new Date(iso); return `${d.getMonth() + 1}. ${d.getDate()}.`; };
-const dayKey = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const mdDate = (d: string) => `${Number(d.slice(5, 7))}. ${Number(d.slice(8, 10))}.`;
+const mdReal = (iso: string) => { const d = new Date(iso); return `${d.getMonth() + 1}. ${d.getDate()}.`; };
+/** 접수일: 보낸 사람의 내 날짜(sim_date)가 있으면 그것, 없으면 실제 시각. */
+const md = (r: { simDate?: string | null; createdAt: string }) => (r.simDate ? mdDate(r.simDate) : mdReal(r.createdAt));
 
-/** 답변 기한(실제 시간 기준 24시간)을 「오늘까지 답변」 「내일까지 답변」으로 바꾼다. */
-export function dueLabel(dueAt: string | null, now: Date = new Date()): string {
+/**
+ * 답변 기한(제안자의 내 날짜 · 시각 + 24시간, "YYYY-MM-DDTHH:MM")을 보는 사람의 내 날짜 · 시각과 비교해
+ * 「오늘까지 답변」 「내일까지 답변」 「답변 기한이 지났어요」로 바꾼다.
+ */
+export function dueLabel(dueAt: string | null, today: ISODate, time: HHMM): string {
   if (!dueAt) return '';
-  const due = new Date(dueAt);
-  const diff = Math.round((dayKey(due) - dayKey(now)) / 86_400_000);
-  if (diff < 0) return '답변 기한이 지났어요';
-  if (diff === 0) return '오늘까지 답변';
-  if (diff === 1) return '내일까지 답변';
-  return `${due.getMonth() + 1}. ${due.getDate()}.까지 답변`;
+  const dueDate = dueAt.slice(0, 10);
+  const dueTime = dueAt.slice(11, 16);
+  if (`${today}T${time}` > `${dueDate}T${dueTime}`) return '답변 기한이 지났어요';
+  if (dueDate === today) return '오늘까지 답변';
+  if (dueDate === addDays(today, 1)) return '내일까지 답변';
+  return `${mdDate(dueDate)}까지 답변`;
 }
 
 type Tab = 'reports' | 'collab' | 'done';
@@ -35,6 +43,7 @@ type Tab = 'reports' | 'collab' | 'done';
 export function ReportsCollab({ initialTab = 'reports' }: { initialTab?: Tab }) {
   useAdminCrumbs(['신고 · 협업 제안']);
   const nav = useNavigate();
+  const sim = useSim();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [reports, setReports] = useState<Report[] | null>(null);
   const [collab, setCollab] = useState<Collab[] | null>(null);
@@ -79,7 +88,7 @@ export function ReportsCollab({ initialTab = 'reports' }: { initialTab?: Tab }) 
       <div className="adm-collab-head">
         <div>
           <h3 className="adm-strong">{c.title}</h3>
-          <p className="adm-muted">{c.groupName ?? c.author ?? '회원'}{c.groupName && c.author ? ` · ${c.author}` : ''} · {md(c.createdAt)} 접수{!done && c.dueAt ? ` · ${dueLabel(c.dueAt)}` : ''}</p>
+          <p className="adm-muted">{c.groupName ?? c.author ?? '회원'}{c.groupName && c.author ? ` · ${c.author}` : ''} · {md(c)} 접수{!done && c.dueAt ? ` · ${dueLabel(c.dueAt, sim.today, sim.nowTime)}` : ''}</p>
         </div>
         <div className="adm-head-actions">
           {c.status === 'open' && <Button variant="outline" size="sm" pill onClick={() => setReply(c)}>답장하기</Button>}
@@ -115,9 +124,10 @@ export function ReportsCollab({ initialTab = 'reports' }: { initialTab?: Tab }) 
                     <td><Chip tone="gray">{TARGET[r.targetType] ?? r.targetType}</Chip></td>
                     <td>{r.preview ? `「${r.preview}」` : '(이미 지워진 내용)'}{r.reporter && <small className="adm-muted"> 신고 · {r.reporter}</small>}</td>
                     <td>{r.reason}</td>
-                    <td>{md(r.createdAt)}</td>
+                    <td>{md(r)}</td>
                     <td className="adm-actions">
-                      <button type="button" onClick={() => setHide(r)} aria-label={`숨기기 ${r.preview ?? ''}`}>숨기기</button>
+                      {/* 모임은 숨길 수 없어요(모임 닫기는 「모임」 화면에서). 모임 신고는 「문제 없음」만. */}
+                      {r.targetType !== 'group' && <button type="button" onClick={() => setHide(r)} aria-label={`숨기기 ${r.preview ?? ''}`}>숨기기</button>}
                       <button type="button" onClick={() => void dismiss(r)} aria-label={`문제 없음 ${r.preview ?? ''}`}>문제 없음</button>
                     </td>
                   </tr>
@@ -126,7 +136,7 @@ export function ReportsCollab({ initialTab = 'reports' }: { initialTab?: Tab }) 
               </tbody>
             </table>
           </div>
-          <p className="adm-muted adm-foot-note">숨긴 글은 작성자와 관리자에게만 보여요. 같은 사람이 3번 숨김 처리되면 「회원」에서 이용 제한을 검토해요. 모임 안의 글은 모임 운영진도 숨길 수 있어요.</p>
+          <p className="adm-muted adm-foot-note">숨긴 글은 작성자와 관리자에게만 보여요. 같은 사람이 3번 숨김 처리되면 「회원」에서 이용 제한을 검토해요. 모임 안의 글은 모임 운영진도 숨길 수 있어요. 모임 신고는 숨기지 않고 「모임」 화면에서 닫기를 검토해요.</p>
         </>
       )}
       {tab === 'collab' && (
@@ -145,7 +155,7 @@ export function ReportsCollab({ initialTab = 'reports' }: { initialTab?: Tab }) 
               <tbody>
                 {doneR.map((r) => (
                   <tr key={r.id}>
-                    <td>{TARGET[r.targetType] ?? r.targetType}</td><td>{r.preview ? `「${r.preview}」` : '–'}</td><td>{r.reason}</td><td>{md(r.createdAt)}</td>
+                    <td>{TARGET[r.targetType] ?? r.targetType}</td><td>{r.preview ? `「${r.preview}」` : '–'}</td><td>{r.reason}</td><td>{md(r)}</td>
                     <td>{r.status === 'hidden' ? '숨김' : '문제 없음'}</td>
                   </tr>
                 ))}

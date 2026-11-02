@@ -64,7 +64,9 @@ describe('admin', () => {
     const gid = await group(owner);
     await h.call('POST', `/api/groups/${gid}/join`, { ...as(rep), body: {} });
     const post = await (await h.call('POST', `/api/boards/group/${gid}/posts`, { ...as(owner), body: { title: '문제글', body: '내용', category: '자유' } })).json();
-    const rr = await (await h.call('POST', '/api/reports', { ...as(rep), body: { targetType: 'post', targetId: post.id, reason: '광고' } })).json();
+    const rr = await (await h.call('POST', '/api/reports', { ...on(rep, '2027-05-05'), body: { targetType: 'post', targetId: post.id, reason: '광고' } })).json();
+    const listed = (await (await h.call('GET', '/api/admin/reports', admin)).json()).items.find((x: { id: string }) => x.id === rr.id);
+    expect(listed.simDate).toBe('2027-05-05');
     const res = await h.call('POST', `/api/admin/reports/${rr.id}`, { ...admin, body: { action: 'hide', reason: '광고성', notify: true } });
     expect(res.status).toBe(200);
     expect((await h.db.first<{ hidden: number }>('SELECT hidden FROM posts WHERE id = ?', post.id))!.hidden).toBe(1);

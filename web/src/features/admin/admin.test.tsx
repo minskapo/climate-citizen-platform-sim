@@ -209,19 +209,28 @@ describe('reports and collab', () => {
     await waitFor(() => expect(calls.find((c) => c.path === '/api/admin/reports/r1')?.opts?.body).toEqual({ action: 'hide', reason: '괴롭힘', notify: false }));
   });
 
-  test('collab shows due label 오늘까지/내일까지 by real time', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date(2027, 0, 18, 15, 0));
-    expect(dueLabel(new Date(2027, 0, 18, 23, 0).toISOString())).toBe('오늘까지 답변');
-    expect(dueLabel(new Date(2027, 0, 19, 2, 0).toISOString())).toBe('내일까지 답변');
-    expect(dueLabel(new Date(2027, 0, 17, 9, 0).toISOString())).toBe('답변 기한이 지났어요');
+  test('collab due label follows the viewer\'s sim date/time, not the real clock', async () => {
+    expect(dueLabel('2027-01-18T22:00', '2027-01-18', '15:00')).toBe('오늘까지 답변');
+    expect(dueLabel('2027-01-19T02:00', '2027-01-18', '15:00')).toBe('내일까지 답변');
+    expect(dueLabel('2027-01-18T14:00', '2027-01-18', '15:00')).toBe('답변 기한이 지났어요');
+    expect(dueLabel('2027-01-17T09:00', '2027-01-18', '15:00')).toBe('답변 기한이 지났어요');
+    expect(dueLabel('2027-01-25T09:00', '2027-01-18', '15:00')).toBe('1. 25.까지 답변');
+    simStore.set({ fixedDate: '2027-01-18', dateOffsetDays: 0, timeOverride: '15:00' });
     collabItems = [
-      { id: 'c1', title: '한뼘 2월 기획', idea: '함께 기획해요', period: '', size: '', status: 'open', dueAt: new Date(2027, 0, 18, 22, 0).toISOString(), createdAt: new Date(2027, 0, 17, 22, 0).toISOString(), author: '정치바람', groupName: null, campaignId: null, replies: [] },
-      { id: 'c2', title: '수원 한달살기', idea: '수원에서도', period: '', size: '', status: 'open', dueAt: new Date(2027, 0, 19, 20, 0).toISOString(), createdAt: new Date(2027, 0, 18, 10, 0).toISOString(), author: '지구', groupName: '수원 지구로운 모임', campaignId: null, replies: [] },
+      { id: 'c1', title: '한뼘 2월 기획', idea: '함께 기획해요', period: '', size: '', status: 'open', dueAt: '2027-01-18T22:00', simDate: '2027-01-17', createdAt: '2026-11-02T01:00:00Z', author: '정치바람', groupName: null, campaignId: null, replies: [] },
+      { id: 'c2', title: '수원 한달살기', idea: '수원에서도', period: '', size: '', status: 'open', dueAt: '2027-01-19T20:00', simDate: '2027-01-18', createdAt: '2026-11-02T01:00:00Z', author: '지구', groupName: '수원 지구로운 모임', campaignId: null, replies: [] },
     ];
     mount(<ReportsCollab initialTab="collab" />);
-    expect(await screen.findByText(/오늘까지 답변/)).toBeTruthy();
-    expect(screen.getByText(/내일까지 답변/)).toBeTruthy();
+    expect(await screen.findByText(/1\. 17\. 접수 · 오늘까지 답변/)).toBeTruthy();
+    expect(screen.getByText(/1\. 18\. 접수 · 내일까지 답변/)).toBeTruthy();
+  });
+
+  test('report rows show the sim date; group reports offer only 문제 없음', async () => {
+    reportItems = [{ id: 'r9', targetType: 'group', targetId: 'g', reason: '기타', status: 'open', createdAt: '2026-11-02T01:00:00Z', simDate: '2027-03-05', reporter: '신고자', preview: '이상한 모임', targetHidden: null }];
+    mount(<ReportsCollab />);
+    expect(await screen.findByText('3. 5.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /숨기기/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /문제 없음/ })).toBeTruthy();
   });
 });
 

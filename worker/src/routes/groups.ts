@@ -22,6 +22,7 @@ export interface GroupRow {
   chat_link: string;
   categories_json: string;
   closed_at: string | null;
+  sim_date: string | null;
   transfer_to: string | null;
   transfer_expires: string | null;
 }
@@ -130,6 +131,7 @@ async function groupView(ctx: Ctx, g: GroupRow) {
     ...base,
     description: g.description,
     createdAt: g.created_at,
+    simDate: g.sim_date,
     categories: JSON.parse(g.categories_json) as string[],
     memberCount: count?.n ?? 0,
     staffCount: staffN?.n ?? 0,

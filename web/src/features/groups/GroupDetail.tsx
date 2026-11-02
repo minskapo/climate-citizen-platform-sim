@@ -134,7 +134,7 @@ export function GroupDetail() {
               {readable && g.description && <p className="ghead-desc">{g.description}</p>}
               {readable && (
                 <p className="ghead-stat">
-                  {(g.memberCount ?? 0).toLocaleString('ko-KR')}명 · 이번 주 새 글 {g.newPostsThisWeek ?? 0}개{g.createdAt ? ` · ${koShort(g.createdAt.slice(0, 10) as ISODate)} 개설` : ''}
+                  {(g.memberCount ?? 0).toLocaleString('ko-KR')}명 · 이번 주 새 글 {g.newPostsThisWeek ?? 0}개{g.simDate ?? g.createdAt ? ` · ${koShort((g.simDate ?? g.createdAt!.slice(0, 10)) as ISODate)} 개설` : ''}
                 </p>
               )}
             </div>

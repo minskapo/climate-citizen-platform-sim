@@ -13,6 +13,14 @@ async function group(h: Harness, owner: string, over: Record<string, unknown> = 
 }
 
 describe('groups', () => {
+  test('group detail carries the creator\'s sim date (「개설」)', async () => {
+    const h = harness();
+    const owner = await user(h, '개설자');
+    const r = await h.call('POST', '/api/groups', { ...as(owner, { 'X-Sim-Date': '2027-04-01' }), body: { name: '개설 모임', description: '', sido: '서울', joinPolicy: 'open' } });
+    const id = (await r.json()).id as string;
+    expect((await (await h.call('GET', `/api/groups/${id}`, as(owner))).json()).simDate).toBe('2027-04-01');
+  });
+
   test('approval group: join → pending, staff approves → member', async () => {
     const h = harness();
     const owner = await user(h, '모임장'), u = await user(h, '신청자');

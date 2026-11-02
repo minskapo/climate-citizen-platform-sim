@@ -71,21 +71,23 @@ describe('notifications', () => {
     const kinds = (await (await h.call('GET', '/api/notifications', as(u))).json()).items.map((x: { kind: string }) => x.kind).sort();
     expect(kinds).toEqual(['delivery_result', 'notice']);
 
-    const c = await (await h.call('POST', '/api/collab', { ...as(u), body: { title: '제안', idea: '같이 해요', period: '한 달', size: '30명' } })).json();
-    expect(Math.abs(Date.parse(c.dueAt) - Date.now() - 24 * 3600 * 1000)).toBeLessThan(5000);
+    const c = await (await h.call('POST', '/api/collab', { ...on(u, '2027-03-01', '10:30'), body: { title: '제안', idea: '같이 해요', period: '한 달', size: '30명' } })).json();
+    expect(c.dueAt).toBe('2027-03-02T10:30');
     expect((await h.call('POST', `/api/admin/collab/${c.id}/reply`, { ...admin, body: { body: '좋아요' } })).status).toBe(201);
     const after = await (await h.call('GET', '/api/notifications', as(u))).json();
     expect(after.items.some((x: { kind: string }) => x.kind === 'collab_reply')).toBe(true);
   });
 
-  test('collab due_at is +24h and draft is prefilled', async () => {
+  test('collab due_at is sim date/time +24h and draft is prefilled', async () => {
     const { h, admin, group } = await setup();
     const owner = await user(h, '모임장');
     const gid = await group(owner);
-    const r = await h.call('POST', '/api/collab', { ...as(owner), body: { title: '협업', idea: '아이디어', period: '', size: '', groupId: gid } });
+    const r = await h.call('POST', '/api/collab', { ...on(owner, '2027-12-31', '23:10'), body: { title: '협업', idea: '아이디어', period: '', size: '', groupId: gid } });
     expect(r.status).toBe(201);
     const b = await r.json();
-    expect(Math.abs(Date.parse(b.dueAt) - Date.now() - 24 * 3600 * 1000)).toBeLessThan(5000);
+    expect(b.dueAt).toBe('2028-01-01T23:10'); // 제안자의 내 날짜 · 시각 + 24시간
+    const list = (await (await h.call('GET', '/api/admin/collab', admin)).json()).items;
+    expect(list[0]).toMatchObject({ id: b.id, dueAt: '2028-01-01T23:10', simDate: '2027-12-31' });
     const d = await (await h.call('POST', `/api/admin/collab/${b.id}/draft`, { ...admin, body: { type: 'practice' } })).json();
     const row = await h.db.first<{ title: string; host_group_id: string }>('SELECT title, host_group_id FROM campaigns WHERE id = ?', d.campaignId);
     expect(row!.title).toBe('협업');
