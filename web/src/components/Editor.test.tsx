@@ -8,6 +8,21 @@ const setup = (onSubmit = vi.fn(async () => undefined), allowNotice = false) =>
   render(<Editor categories={['공지', '자료', '자유']} allowNotice={allowNotice} onSubmit={onSubmit} />);
 
 describe('Editor', () => {
+  test('edit mode (attachable=false) hides pickers and lists existing attachments read-only', async () => {
+    render(
+      <Editor
+        categories={['자유']} allowNotice={false} attachable={false}
+        initial={{ title: 't', body: 'b', attachments: [{ id: 'f1', name: '안내문.pdf', mime: 'application/pdf', bytes: 2048 }] }}
+        onSubmit={vi.fn(async () => undefined)}
+      />,
+    );
+    expect(screen.getByText('첨부는 새 글에서만 바꿀 수 있어요')).toBeInTheDocument();
+    expect(screen.getByText('안내문.pdf')).toBeInTheDocument();
+    expect(screen.queryByLabelText('파일 고르기')).toBeNull();
+    expect(screen.queryByLabelText('사진 고르기')).toBeNull();
+    expect(screen.queryByRole('button', { name: /빼기/ })).toBeNull();
+  });
+
   test('editor rejects 1.2MB attachment with friendly error', async () => {
     const onSubmit = vi.fn(async () => undefined);
     setup(onSubmit);
