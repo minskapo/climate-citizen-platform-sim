@@ -7,12 +7,13 @@ import { useSim } from '../../lib/sim';
 import { showToast } from '../../components/Toast';
 import { Button } from '../../components/ui';
 import { ApplySheet } from './ApplySheet';
+import { useHostJoin } from './useHostJoin';
 import { statusFor, type CampaignDetail } from './types';
 
 const n = (x: number) => x.toLocaleString('ko-KR');
 const md = (d: string) => koShort(d).replace(/\(.\)$/, '');
 
-/** 알림 받기(모집 예정 · 다음 기수) 구독 토글 */
+/** 알림 받기(모집 예정) 구독 토글. 모집 예정 캠페인에서만 실제로 알림이 간다. */
 export function useSubscribe(detail: CampaignDetail, reload: () => Promise<void>) {
   const sim = useSim();
   const nav = useNavigate();
@@ -46,6 +47,7 @@ export function ApplyCard({ detail, reload, onReviews }: { detail: CampaignDetai
   const st = statusFor(c, sim.today);
   const [applying, setApplying] = useState(false);
   const sub = useSubscribe(detail, reload);
+  const host = useHostJoin(detail);
   const mine = detail.myParticipation;
   const quit = mine?.state === 'quit';
   const participants = detail.counts.participants;
@@ -57,6 +59,11 @@ export function ApplyCard({ detail, reload, onReviews }: { detail: CampaignDetai
   let main: ReactNode;
   let note: string | null = null;
   let second: ReactNode = null;
+  /** 진행 중 · 마감: 「알림 받기」 대신 주최 모임이 있으면 「주최 모임 소식 받기」(가입). */
+  const hostJoin: ReactNode = !host.hostId ? null
+    : host.inGroup ? <p className="capply-note">주최 모임에 가입돼 있어요</p>
+      : host.pending ? <p className="capply-note">주최 모임 가입 승인을 기다리고 있어요</p>
+        : host.canJoin ? <Button block variant="outline" disabled={host.busy} onClick={() => void host.join()}>주최 모임 소식 받기</Button> : null;
 
   if (st === 'scheduled') {
     big = { num: detail.counts.subscribers ?? 0, unit: '명 알림 신청' };
@@ -88,14 +95,13 @@ export function ApplyCard({ detail, reload, onReviews }: { detail: CampaignDetai
     big = { num: participants, unit: `명 ${verb}` };
     line = '마감된 캠페인이에요';
     main = <Button size="lg" block variant="outline" onClick={onReviews}>후기 보기</Button>;
+    second = hostJoin;
   } else {
     // 진행 중 · 비참가자, 또는 이번 기수를 그만둔 사람
     big = { num: participants, unit: `명 ${verb}` };
     if (st === 'running' && s.runStart) line = `진행 중 · ${diffDays(s.runStart, sim.today) + 1}일째`;
     main = <Button size="lg" block disabled>{quit ? '이번 기수에는 다시 참여할 수 없어요' : '모집이 끝났어요'}</Button>;
-    second = sub.subscribed
-      ? <Button block variant="tint" disabled={sub.busy} onClick={sub.toggle} aria-pressed="true">✓ 다음 기수 알림 신청됨</Button>
-      : <Button block variant="outline" disabled={sub.busy} onClick={sub.toggle}>다음 기수 알림 받기</Button>;
+    second = hostJoin;
   }
 
   return (

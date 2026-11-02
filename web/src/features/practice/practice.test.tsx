@@ -20,6 +20,8 @@ vi.mock('../../lib/api', () => ({
     if (path.startsWith('/api/participations/p1/records')) return records;
     if (path.startsWith('/api/me/measurements')) return { items: [{ id: 'm1', simDate: '2027-01-10', createdAt: '', campaignId: 'c1', kind: 'start', result: { total: 11.2 } }] };
     if (path.startsWith('/api/boards/')) return { items: [], nextCursor: null };
+    if (path === '/api/groups/g1') return { id: 'g1', myRole: null, joinPolicy: 'open', closed: false };
+    if (path === '/api/groups/g1/join') return { role: 'member' };
     if (path.startsWith('/api/groups')) return { items: [] };
     if (path.startsWith('/api/aggregates')) return { avg: null };
     return {};
@@ -81,7 +83,19 @@ describe('practice campaign', () => {
     open('2027-02-10');
     expect(await screen.findByRole('button', { name: '모집이 끝났어요' })).toBeDisabled();
     expect(screen.getAllByText('진행 중').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: '다음 기수 알림 받기' })).toBeInTheDocument();
+    // 진행 중 · 마감에는 「알림 받기」가 실제로 알려 주지 않으므로 보이지 않는다.
+    expect(screen.queryByRole('button', { name: /알림 받기/ })).toBeNull();
+  });
+
+  test('running campaign with a linked host group offers 주최 모임 소식 받기 instead', async () => {
+    detail = makeDetail();
+    (detail.campaign as Record<string, unknown>).host = { type: 'group', id: 'g1', name: '원주 모임' };
+    (detail.campaign as Record<string, unknown>).hostGroupId = 'g1';
+    open('2027-02-10');
+    fireEvent.click(await screen.findByRole('button', { name: '주최 모임 소식 받기' }));
+    await waitFor(() => expect(calls).toContain('/api/groups/g1/join'));
+    expect(await screen.findByText('주최 모임에 가입했어요')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /알림 받기/ })).toBeNull();
   });
 
   test('scheduled shows 알림 받기 and subscriber count', async () => {

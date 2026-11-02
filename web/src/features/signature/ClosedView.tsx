@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { koShort } from '@shared/date';
 import { api } from '../../lib/api';
 import { copyShareLink } from '../../lib/share';
 import { useSim } from '../../lib/sim';
-import { showToast } from '../../components/Toast';
 import { Button, Chip } from '../../components/ui';
 import { useFileUrl } from '../../components/useFileUrl';
 import type { CampaignDetail } from '../campaigns/types';
+import { useHostJoin } from '../campaigns/useHostJoin';
 import { md, n } from './fmt';
 import { CountBlock, headerLine, SignLayout, type Aggregate } from './parts';
 
@@ -50,10 +49,8 @@ function DeliveryCard({ detail, delivery, count }: { detail: CampaignDetail; del
 /** S-3 마감 · 전달 결과: 전달 결과 카드가 맨 위, 오른쪽에 다음 서명 알림. */
 export function ClosedView({ detail, agg, reload }: { detail: CampaignDetail; agg: Aggregate | null; reload(): Promise<void> }) {
   const sim = useSim();
-  const nav = useNavigate();
   const c = detail.campaign;
   const [delivery, setDelivery] = useState<Delivery | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
   useEffect(() => {
     let alive = true;
     api<{ delivery: Delivery | null }>(`/api/campaigns/${c.id}/delivery`, { quiet: true })
@@ -62,40 +59,8 @@ export function ClosedView({ detail, agg, reload }: { detail: CampaignDetail; ag
     return () => { alive = false; };
   }, [c.id]);
 
-  const hostId = c.host.type === 'group' && c.host.id ? c.host.id : null;
-  const [role, setRole] = useState<string | null | undefined>(undefined);
-  /** 가입 신청을 받을 수 있는 모임인지(비공개 · 닫힌 모임 · 내보낸 회원이면 버튼을 숨긴다) */
-  const [joinable, setJoinable] = useState(false);
-  useEffect(() => {
-    if (!hostId) { setRole(null); return; }
-    let alive = true;
-    const signedIn = !!sim.userId && sim.role !== 'guest';
-    api<{ myRole: string | null; joinPolicy?: string; closed?: boolean }>(`/api/groups/${hostId}`, { quiet: true })
-      .then((g) => {
-        if (!alive) return;
-        const myRole = signedIn ? g.myRole : null;
-        setRole(myRole);
-        setJoinable(g.joinPolicy !== 'private' && !g.closed && myRole !== 'banned');
-      })
-      .catch(() => { if (alive) { setRole(null); setJoinable(false); } });
-    return () => { alive = false; };
-  }, [hostId, sim.userId, sim.role]);
-  const inGroup = !!role && ['owner', 'staff', 'member'].includes(role);
-  const pending = role === 'pending';
-  const joinHost = async () => {
-    if (!hostId) return;
-    if (!sim.userId || sim.role === 'guest') { showToast('가입하면 모임 소식을 받을 수 있어요'); nav('/signup'); return; }
-    setBusy(true);
-    try {
-      const r = await api<{ role: string }>(`/api/groups/${hostId}/join`, { method: 'POST', body: {}, quiet: true });
-      setRole(r.role);
-      showToast(r.role === 'pending' ? '가입을 신청했어요. 운영진이 승인하면 가입돼요' : '주최 모임에 가입했어요');
-    } catch (e) {
-      showToast((e as Error).message || '가입하지 못했어요');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const host = useHostJoin(detail);
+  const { hostId, inGroup, pending } = host;
 
   const lead = delivery
     ? <DeliveryCard detail={detail} delivery={delivery} count={agg?.count ?? null} />
@@ -117,8 +82,7 @@ export function ClosedView({ detail, agg, reload }: { detail: CampaignDetail; ag
           <p className="capply-note">서명이 마감됐어요. 주최 모임에 가입하면 다음 서명과 후속 활동 소식을 받아 볼 수 있어요.</p>
           {inGroup ? <p className="sig-note">주최 모임에 가입돼 있어요</p>
             : pending ? <p className="sig-note">주최 모임 가입 승인을 기다리고 있어요</p>
-              : role === undefined || !joinable ? null
-                : <Button size="lg" block disabled={busy} onClick={joinHost}>주최 모임 소식 받기</Button>}
+              : host.canJoin ? <Button size="lg" block disabled={host.busy} onClick={() => void host.join()}>주최 모임 소식 받기</Button> : null}
         </>
       ) : (
         <p className="capply-note">서명이 마감됐어요. 다음 서명은 홈에서 알려 드려요.</p>

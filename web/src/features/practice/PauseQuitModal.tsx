@@ -52,7 +52,7 @@ export function PauseQuitModal({ participationId, hostName, hostLinked, done, to
         <strong>그만두면</strong>
         <ul>
           <li>지금까지의 기록({done} / {total}{unit})은 「내 활동 › 지난 캠페인」에 남아요.</li>
-          <li>이번 기수에는 다시 참여할 수 없고, 다음 기수 알림은 받을 수 있어요.</li>
+          <li>이번 기수에는 다시 참여할 수 없어요. 다음 기수가 열리면 캠페인 목록에서 신청할 수 있어요.</li>
           {hostLinked && <li>주최 모임 「{hostName}」에는 그대로 남아요. 탈퇴는 모임에서 따로 해요.</li>}
         </ul>
       </div>
