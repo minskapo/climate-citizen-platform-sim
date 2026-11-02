@@ -1,4 +1,4 @@
-.ob { max-width: 840px; margin: 0 auto; padding: 32px 0 64px; }
+.ob { max-width: calc(840px + var(--gutter) * 2); padding-top: 32px; padding-bottom: 64px; }
 .ob-steps { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; font-size: var(--fs-14); color: var(--c-text-faint); }
 .ob-steps .on { color: var(--c-text); font-weight: 600; }
 .ob-steps .dot { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--c-surface-2); align-items: center; justify-content: center; font-size: var(--fs-12); margin-right: 6px; }
@@ -27,7 +27,7 @@
 .ob-sum small { color: var(--c-text-sub); display: block; }
 .ob-acts { display: grid; gap: 12px; }
 @media (max-width: 767px) {
-  .ob { padding: 16px 0 40px; }
+  .ob { padding-top: 16px; padding-bottom: 40px; }
   .ob-row { grid-template-columns: 1fr; }
   .ob-item { flex-wrap: wrap; }
   .ob-thumb { width: 56px; height: 56px; }

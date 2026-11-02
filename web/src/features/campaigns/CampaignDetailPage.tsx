@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { api, ApiError } from '../../lib/api';
 import { useSim } from '../../lib/sim';
@@ -15,11 +15,17 @@ export function useCampaignDetail(id: string) {
   const sim = useSim();
   const [detail, setDetail] = useState<CampaignDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** 마지막 요청만 반영한다(날짜를 바꾸자마자 다른 캠페인으로 가면 늦게 온 이전 응답이 덮어쓸 수 있다). */
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const mine = ++seq.current;
     try {
-      setDetail(await api<CampaignDetail>(`/api/campaigns/${id}`, { quiet: true }));
+      const d = await api<CampaignDetail>(`/api/campaigns/${id}`, { quiet: true });
+      if (mine !== seq.current) return;
+      setDetail(d);
       setError(null);
     } catch (e) {
+      if (mine !== seq.current) return;
       setError(e instanceof ApiError && e.status === 404 ? '캠페인을 찾을 수 없어요' : (e as Error).message || '캠페인을 불러오지 못했어요');
     }
     // 내 날짜 · 역할 · 활동명이 바뀌면 다시 불러온다.

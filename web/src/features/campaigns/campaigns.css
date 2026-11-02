@@ -136,6 +136,7 @@
   .clist-selects, .clist-selects form, .clist-search { width: 100%; }
   .clist-selects .input { flex: 1; }
   .chead-img { height: 200px; }
+  .chead-img.chead-img-sm { height: 64px; }
   .chead-title-lg { font-size: var(--fs-28); }
   .cinfo-row { grid-template-columns: 96px 1fr; }
   .capply-main { position: sticky; bottom: 12px; z-index: 5; }

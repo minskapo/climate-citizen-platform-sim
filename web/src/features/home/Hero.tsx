@@ -42,7 +42,7 @@ export function CalcSide({ agg }: { agg: CalcAggregate | null }) {
         <div><dt>나</dt><dd>?</dd></div>
         <div><dt>2030 1인당 목표</dt><dd>{fmt(CONFIG.TARGET_2030)}톤</dd></div>
       </dl>
-      <p className="hcalc-note">가입 없이 5분 · 질문 12개. 결과는 나중에 저장할 수 있어요.</p>
+      <p className="hcalc-note">가입 없이 5분 · 질문 28개. 결과는 나중에 저장할 수 있어요.</p>
     </div>
   );
 }
@@ -88,7 +88,7 @@ function HeroCampaign({ d }: { d: CampaignDetail }) {
 function IntroLeft() {
   return (
     <div className="hhero-l">
-      <Chip tone="green">{PLATFORM_INTRO.eyebrow}</Chip>
+      <div className="hhero-tags"><Chip tone="green">{PLATFORM_INTRO.eyebrow}</Chip></div>
       <h1 className="hhero-title"><Lines text={PLATFORM_INTRO.title} /></h1>
       <p className="hhero-lead"><Lines text={PLATFORM_INTRO.body} /></p>
       <div className="hhero-cta">

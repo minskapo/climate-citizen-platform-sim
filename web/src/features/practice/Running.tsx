@@ -75,7 +75,10 @@ export function Running({ detail, data, onChanged }: { detail: CampaignDetail; d
   const round = cycle === 'weekly' ? `${Math.floor((dayNo - 1) / 7) + 1}주차` : '';
   const tag = [round, mission?.category].filter(Boolean).join(' · ');
   const scrollToMission = () => document.getElementById('today-mission')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const [boardKey, setBoardKey] = useState(0);
   const refresh = () => { void onChanged(); };
+  /** 기록을 저장하면 「참가자 게시판에도 인증 올리기」 글이 생길 수 있어 오늘의 인증도 다시 불러온다. */
+  const onRecordSaved = () => { refresh(); setBoardKey((k) => k + 1); };
 
   return (
     <div className="cdetail">
@@ -105,7 +108,7 @@ export function Running({ detail, data, onChanged }: { detail: CampaignDetail; d
           {recording && !r && <Spinner />}
           {recording && r && r.isSlotToday && (
             <RecordForm key={`${today}-${todayRecord?.id ?? 'new'}`} participationId={mine.id} slotDate={today} fields={fieldsFor(detail, today)}
-              numberUnit={s.numberUnit} initial={todayRecord} onSaved={refresh} />
+              numberUnit={s.numberUnit} initial={todayRecord} onSaved={onRecordSaved} />
           )}
           {recording && r && !r.isSlotToday && (
             <div className="cnext">
@@ -117,7 +120,7 @@ export function Running({ detail, data, onChanged }: { detail: CampaignDetail; d
         {recording && r && <RecordCalendar detail={detail} data={r} today={today} />}
         <BlockSlotView campaignId={c.id} screen="running" slot="after_common" />
         <BlockSlotView campaignId={c.id} screen="running" slot="bottom" />
-        <ParticipantBoard detail={detail} variant="today" />
+        <ParticipantBoard detail={detail} variant="today" reloadKey={boardKey} />
       </div>
       <aside className="cdetail-side">
         {recording && <ProgressCard detail={detail} data={data} showLeft={comeback} />}

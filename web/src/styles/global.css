@@ -22,7 +22,7 @@ img { max-width: 100%; display: block; }
 
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 .main { flex: 1; }
-.container { width: 100%; max-width: calc(var(--w-container) + var(--gutter) * 2); margin: 0 auto; padding: 0 var(--gutter); }
+.container { width: 100%; max-width: calc(var(--w-container) + var(--gutter) * 2); margin-left: auto; margin-right: auto; padding-left: var(--gutter); padding-right: var(--gutter); }
 .page { padding-top: var(--s-10); padding-bottom: var(--s-16); }
 .page-title { font-size: var(--fs-28); font-weight: 700; margin-bottom: var(--s-6); letter-spacing: -0.01em; }
 .mr-auto { margin-right: auto; }

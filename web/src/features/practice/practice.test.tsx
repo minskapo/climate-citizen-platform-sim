@@ -108,6 +108,17 @@ describe('practice campaign', () => {
     expect(screen.getByText('오늘 4명 기록')).toBeInTheDocument();
   });
 
+  test('saving a record reloads today proofs on the board', async () => {
+    detail = makeDetail({}, {});
+    open('2027-02-10');
+    fireEvent.click(await screen.findByRole('radio', { name: '했어요' }));
+    const boardCalls = () => calls.filter((c) => c.startsWith('/api/boards/campaign/c1')).length;
+    await waitFor(() => expect(boardCalls()).toBeGreaterThan(0));
+    const before = boardCalls();
+    fireEvent.click(screen.getByRole('button', { name: '기록 저장' }));
+    await waitFor(() => expect(boardCalls()).toBeGreaterThan(before));
+  });
+
   test('comeback banner after 3 missed slots', async () => {
     detail = makeDetail({}, {});
     records = makeRecords({ missedStreak: 2 });
