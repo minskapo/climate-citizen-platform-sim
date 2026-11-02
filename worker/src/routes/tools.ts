@@ -146,6 +146,10 @@ export const listTools: Handler = async (_req, ctx) => {
     out.push({
       id: t.id, name: t.name, slug: t.slug, kind: t.kind, createdAt: t.created_at,
       published: pub ? { version: pub.version, manifest: JSON.parse(pub.manifest_json) } : null,
+      ...(admin ? {
+        usedBy: await ctx.db.all<{ id: string; title: string }>(
+          'SELECT DISTINCT c.id, c.title FROM campaign_tools ct JOIN campaigns c ON c.id = ct.campaign_id WHERE ct.tool_id = ? ORDER BY c.title', t.id),
+      } : {}),
       ...(admin ? { versions: (await ctx.db.all<VersionRow>('SELECT * FROM tool_versions WHERE tool_id = ? ORDER BY version DESC', t.id)).map(versionView) } : {}),
     });
   }

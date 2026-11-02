@@ -79,6 +79,32 @@ describe('admin', () => {
     expect(groups.items[0].memberCount).toBe(2);
   });
 
+  test('delivery list groups signers by council and is audited; dismiss tells the reporter', async () => {
+    const { h, admin, signature, group } = await setup();
+    const id = await signature();
+    const a = await user(h, '가', '서울특별시');
+    const b = await user(h, '나', '서울특별시');
+    const c = await user(h, '다', '강원특별자치도');
+    await h.db.run("UPDATE users SET sigungu = '마포구' WHERE id IN (?, ?)", a, b);
+    for (const u of [a, b, c]) await h.call('POST', `/api/campaigns/${id}/participate`, { ...on(u, APPLY_DAY), body: { answers: {}, consents: { delivery: true } } });
+    const all = await (await h.call('POST', `/api/admin/campaigns/${id}/delivery-list`, { ...admin, body: { council: 'all' } })).json();
+    expect(all.councils.map((x: { name: string; count: number }) => [x.name, x.count])).toEqual([['강원특별자치도의회', 1], ['마포구의회', 2]]);
+    expect(Object.keys(all.councils[1].items[0]).sort()).toEqual(['nickname', 'region', 'signedOn']);
+    const one = await (await h.call('POST', `/api/admin/campaigns/${id}/delivery-list`, { ...admin, body: { council: '마포구의회' } })).json();
+    expect(one.councils).toHaveLength(1);
+    expect((await h.call('POST', `/api/admin/campaigns/${id}/delivery-list`, { ...as(a), body: {} })).status).toBe(403);
+    expect((await h.db.first<{ n: number }>("SELECT COUNT(*) n FROM audit_log WHERE action = 'delivery_list'"))!.n).toBe(2);
+
+    const owner = await user(h, '모임장');
+    const gid = await group(owner);
+    const post = await (await h.call('POST', `/api/boards/group/${gid}/posts`, { ...as(owner), body: { title: '글', body: '내용', category: '자유' } })).json();
+    const rep = await user(h, '신고자');
+    await h.call('POST', `/api/groups/${gid}/join`, { ...as(rep), body: {} });
+    const rr = await (await h.call('POST', '/api/reports', { ...as(rep), body: { targetType: 'post', targetId: post.id, reason: '기타' } })).json();
+    await h.call('POST', `/api/admin/reports/${rr.id}`, { ...admin, body: { action: 'dismiss' } });
+    expect((await (await h.call('GET', '/api/notifications', as(rep))).json()).items.some((x: { kind: string }) => x.kind === 'report_result')).toBe(true);
+  });
+
   test('reset requires passcode', async () => {
     const { h, admin } = await setup();
     const u = await user(h, '일반');

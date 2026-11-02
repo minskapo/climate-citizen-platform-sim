@@ -58,7 +58,7 @@ export interface CampaignDetail {
   };
   status: CampaignStatus;
   phase: ParticipantPhase | null;
-  counts: { participants: number; waitlisted: number; seatsTaken: number; capacity: number | null; seatsLeft: number | null; subscribers?: number };
+  counts: { participants: number; waitlisted: number; seatsTaken: number; capacity: number | null; seatsLeft: number | null; subscribers?: number; attendedCount?: number };
   myParticipation: MyParticipation | null;
   missions: Mission[];
   checklist: ChecklistEntry[];

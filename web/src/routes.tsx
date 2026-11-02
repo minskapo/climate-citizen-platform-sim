@@ -21,6 +21,14 @@ import { Certificate } from './features/offline/Certificate';
 import { CampaignPostPage } from './features/campaigns/CampaignPostPage';
 import { PageToolView } from './features/sandbox/PageToolView';
 import { AdminLayout, AdminPlaceholder } from './features/admin/AdminLayout';
+import { ParticipantsPage } from './features/admin/ParticipantsPage';
+import { DeliveryListPrint } from './features/admin/DeliveryListPrint';
+import { WebTools } from './features/admin/WebTools';
+import { WebToolPreview } from './features/admin/WebToolPreview';
+import { ReportsCollab } from './features/admin/ReportsCollab';
+import { GroupsTable } from './features/admin/GroupsTable';
+import { UsersTable } from './features/admin/UsersTable';
+import { DataStats } from './features/admin/DataStats';
 import { AdminHome } from './features/admin/AdminHome';
 import { CampaignAdminList } from './features/admin/CampaignAdminList';
 import { CampaignEditor } from './features/admin/editor/CampaignEditor';
@@ -64,13 +72,15 @@ export const adminRoutes: RouteObject[] = [
       { path: 'campaigns/new', element: <CampaignEditor /> },
       { path: 'campaigns/:id/edit', element: <CampaignEditor /> },
       // Task 21: 참가자 관리 · 웹 도구 · 신고 · 협업 제안 · 모임 · 회원 · 데이터
-      { path: 'campaigns/:id/participants', element: <AdminPlaceholder title="참가자" /> },
-      { path: 'tools/*', element: <AdminPlaceholder title="웹 도구" /> },
-      { path: 'groups', element: <AdminPlaceholder title="모임" /> },
-      { path: 'reports', element: <AdminPlaceholder title="신고" /> },
-      { path: 'collab', element: <AdminPlaceholder title="협업 제안" /> },
-      { path: 'users', element: <AdminPlaceholder title="회원" /> },
-      { path: 'data', element: <AdminPlaceholder title="데이터 · 통계" /> },
+      { path: 'campaigns/:id/participants', element: <ParticipantsPage /> },
+      { path: 'campaigns/:id/delivery-list', element: <DeliveryListPrint /> },
+      { path: 'tools', element: <WebTools /> },
+      { path: 'tools/:id/preview', element: <WebToolPreview /> },
+      { path: 'groups', element: <GroupsTable /> },
+      { path: 'reports', element: <ReportsCollab /> },
+      { path: 'collab', element: <ReportsCollab initialTab="collab" /> },
+      { path: 'users', element: <UsersTable /> },
+      { path: 'data', element: <DataStats /> },
       { path: '*', element: <AdminPlaceholder title="찾을 수 없는 화면" /> },
     ],
   },

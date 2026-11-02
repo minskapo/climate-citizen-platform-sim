@@ -43,6 +43,9 @@ export function EventDay({ detail, attendance, onChanged }: { detail: CampaignDe
         {o.attendance !== 'none' && (
           <section className="card coff-attend" aria-label="현장 출석">
             <div className="cchk-head"><h2>현장 QR 출석</h2></div>
+            {detail.counts.attendedCount != null && (
+              <p className="coff-sub" role="status">지금 출석 {detail.counts.attendedCount.toLocaleString('ko-KR')} / {detail.counts.seatsTaken.toLocaleString('ko-KR')}명</p>
+            )}
             {attendance ? (
               <p className="coff-attended"><strong>✓ 출석했어요 · {atTime(attendance.at)}</strong> 「참여 완료」로 기록됐고, 내 활동에 남아요.</p>
             ) : o.attendance === 'qr' ? (

@@ -271,6 +271,19 @@ describe('attendance', () => {
     expect(await h.db.first('SELECT 1 FROM attendance WHERE participation_id = ?', p)).toBeNull();
     void as;
   });
+
+  test('attendedCount counts people incl. companions for applicants and staff only', async () => {
+    const { h, offline, admin } = await setup();
+    const id = await offline({ capacity: 10, attendance: 'roster' });
+    const u = await user(h, '참가자');
+    const other = await user(h, '구경꾼');
+    const p = (await (await h.call('POST', `/api/campaigns/${id}/participate`, { ...on(u, APPLY_DAY), body: { answers: {}, consents: {}, companions: 2 } })).json()).participation.id;
+    await h.call('POST', `/api/participations/${p}/attend-manual`, { headers: { ...admin.headers, 'X-Sim-Date': '2027-01-24' } });
+    const get = async (who: Record<string, unknown>) => (await (await h.call('GET', `/api/campaigns/${id}`, who)).json()).counts.attendedCount;
+    expect(await get(on(u, '2027-01-24'))).toBe(3);
+    expect(await get(admin)).toBe(3);
+    expect(await get(on(other, '2027-01-24'))).toBeUndefined();
+  });
 });
 
 describe('my participations', () => {

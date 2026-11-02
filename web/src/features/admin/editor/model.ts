@@ -163,7 +163,7 @@ export function autoChecklist(d: EditorDraft, missions: number, materials: numbe
   if (d.type === 'signature') {
     return [
       { label: '친구에게 공유하기', when: '항상', active: true },
-      { label: '주최 모임 둘러보기', when: '주최 모임을 연결했을 때', active: !!d.hostGroupId },
+      { label: '주최 모임 둘러보기', when: '주최 모임 가입을 고르지 않았을 때', active: !!d.hostGroupId },
       { label: '전달 결과 알림 받기', when: '항상', active: true },
       { label: '관련 자료 읽기', when: '쓰는 자료를 붙였을 때', active: materials > 0 },
     ];

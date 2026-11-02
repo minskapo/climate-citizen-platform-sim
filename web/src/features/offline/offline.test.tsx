@@ -120,6 +120,13 @@ describe('offline campaign', () => {
     expect(calls.some((c) => c.path === '/api/campaigns/c1/attend')).toBe(false);
   });
 
+  test('event day shows live attendance count when the server sends it', async () => {
+    detail = makeDetail({ mine: {} });
+    (detail.counts as Record<string, unknown>).attendedCount = 12;
+    open('2027-01-25', '13:30');
+    expect(await screen.findByText('지금 출석 12 / 18명')).toBeTruthy();
+  });
+
   test('code entry inside the window attends and shows the done dialog', async () => {
     detail = makeDetail({ mine: {} });
     open('2027-01-25', '13:30');

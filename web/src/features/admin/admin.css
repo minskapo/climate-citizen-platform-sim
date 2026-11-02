@@ -218,3 +218,64 @@
   .ed-foot .btn { flex: 1; min-width: 0; }
   .ed-dt { flex-wrap: wrap; }
 }
+
+/* ── 참가자 · 웹 도구 · 신고 · 기타 메뉴 ─────────── */
+.adm-head-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex: none; }
+.adm-head .adm-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.adm-stat-note { color: var(--c-green); font-size: var(--fs-12); }
+.adm-empty { text-align: center; color: var(--c-text-sub); padding: 28px 16px !important; }
+.adm-ok { color: var(--c-green); font-weight: 600; }
+.adm-gap { margin-top: 28px; }
+.adm-h3 { font-size: var(--fs-14); font-weight: 700; margin: 18px 0 8px; }
+.adm-radio { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--c-line); border-radius: 12px; cursor: pointer; }
+.adm-radio span { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.adm-radio small { font-size: var(--fs-12); color: var(--c-text-sub); }
+.adm-checks { list-style: none; margin: 0; padding: 12px 14px; background: var(--c-surface-2); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-13); }
+.adm-checks .is-ok { color: var(--c-green); }
+.adm-checks .is-warn { color: var(--c-warn-text); }
+.adm-fieldset { border: 0; padding: 0; margin: 0; }
+.adm-qr { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.adm-qr img, .adm-qr-ph { width: 220px; height: 220px; border-radius: 12px; border: 1px solid var(--c-line); }
+.adm-qr-ph { display: flex; align-items: center; justify-content: center; background: var(--c-surface-2); color: var(--c-text-faint); }
+.adm-qr-code { font-size: 40px; font-weight: 700; letter-spacing: .18em; margin: 0; font-variant-numeric: tabular-nums; }
+.adm-tools { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+.adm-tools tr.is-sel td { background: var(--c-green-tint); }
+.adm-tools tbody tr { cursor: pointer; }
+.adm-rowbtn { display: flex; flex-direction: column; gap: 2px; border: 0; background: none; padding: 0; text-align: left; font: inherit; color: inherit; }
+.adm-tool-side { padding: 20px; position: sticky; top: 16px; }
+.adm-drop { width: 100%; display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 16px; border: 1px dashed var(--c-line); border-radius: 12px; background: var(--c-surface-2); font: inherit; font-size: var(--fs-13); color: var(--c-text-sub); cursor: pointer; }
+.adm-drop b { color: var(--c-text); }
+.adm-kv { margin: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--c-line); border-radius: 12px; font-size: var(--fs-13); }
+.adm-kv div { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
+.adm-kv dt { color: var(--c-text-sub); } .adm-kv dd { margin: 0; }
+.adm-versions { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.adm-versions li { display: flex; align-items: center; gap: 10px; }
+.adm-versions li .adm-muted { flex: 1; }
+.adm-link { border: 0; background: none; padding: 0; color: var(--c-green); font-weight: 600; font-size: var(--fs-13); cursor: pointer; }
+.adm-side-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+.adm-security { margin-top: 24px; padding: 20px 24px; border-radius: 16px; background: var(--c-blue-tint, #E8F0FB); font-size: var(--fs-13); color: var(--c-blue, #2459A8); }
+.adm-security p { margin: 4px 0; }
+.adm-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--c-dark); color: #fff; border-radius: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.adm-preview-bar .adm-muted { color: #cfd8d3; }
+.adm-preview-stage { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 14px; overflow: hidden; min-height: 360px; }
+.adm-preview-stage.is-mobile { max-width: 390px; margin: 0 auto; }
+.adm-collab-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.adm-collab { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.adm-collab-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.adm-reply { margin: 0; padding: 10px 12px; background: var(--c-surface-2); border-radius: 10px; font-size: var(--fs-13); }
+.adm-actions button:disabled { opacity: .5; }
+
+/* 전달용 명단 인쇄 */
+.dl-sheet { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 14px; padding: 28px; margin-bottom: 20px; }
+.dl-title { font-size: var(--fs-20, 20px); margin: 0 0 4px; }
+.dl-sub { color: var(--c-text-sub); font-size: var(--fs-13); margin: 0 0 16px; }
+.dl-table { width: 100%; border-collapse: collapse; font-size: var(--fs-14); }
+.dl-table th, .dl-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--c-line); }
+@media (max-width: 900px) { .adm-tools { grid-template-columns: 1fr; } .adm-tool-side { position: static; } }
+@media print {
+  .adm-side, .adm-top, .no-print, .toast-host { display: none !important; }
+  .adm, .adm-body { display: block; background: #fff; }
+  .adm-main { padding: 0; max-width: none; }
+  .dl-sheet { border: 0; border-radius: 0; padding: 0; margin: 0; break-after: page; page-break-after: always; }
+  .dl-sheet:last-child { break-after: auto; page-break-after: auto; }
+}

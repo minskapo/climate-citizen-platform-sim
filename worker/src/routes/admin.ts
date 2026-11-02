@@ -81,11 +81,23 @@ export async function partRows(ctx: Ctx, campaignId: string) {
     `SELECT p.id k, m.result_json FROM participations p JOIN measurements m ON m.rowid = (
        SELECT m2.rowid FROM measurements m2 WHERE m2.user_id = p.user_id AND m2.campaign_id = p.campaign_id AND m2.kind = 'end' ORDER BY m2.created_at DESC, m2.rowid DESC LIMIT 1)
      WHERE p.campaign_id = ?`, campaignId);
+  const att = new Map((await ctx.db.all<{ pid: string; at: string; method: string }>(
+    'SELECT a.participation_id pid, a.at, a.method FROM attendance a JOIN participations p ON p.id = a.participation_id WHERE p.campaign_id = ?', campaignId)).map((x) => [x.pid, x]));
+  const shared = new Map((await ctx.db.all<{ u: string; n: number }>(
+    "SELECT shared_by u, COUNT(*) n FROM participations WHERE campaign_id = ? AND shared_by IS NOT NULL AND state = 'signed' GROUP BY shared_by", campaignId)).map((x) => [x.u, x.n]));
+  const host = await ctx.db.first<{ host_group_id: string | null }>('SELECT host_group_id FROM campaigns WHERE id = ?', campaignId);
+  const roles = new Map(host?.host_group_id
+    ? (await ctx.db.all<{ user_id: string; role: string }>('SELECT user_id, role FROM group_members WHERE group_id = ?', host.host_group_id)).map((x) => [x.user_id, x.role])
+    : []);
   return rows.map((r) => {
     const answers = JSON.parse(r.answers_json) as { reminder?: { enabled?: boolean } };
     const checklist = Object.values(JSON.parse(r.checklist_json) as Record<string, boolean>).filter(Boolean).length;
     const research = (JSON.parse(r.consents_json) as { research?: boolean }).research === true || (JSON.parse(r.user_consents) as { research?: boolean }).research === true;
     return {
+      sigungu: r.sigungu || '', sharedCount: shared.get(r.user_id) ?? 0,
+      hostJoin: ((role) => (role === 'pending' ? 'pending' : role === 'owner' || role === 'staff' || role === 'member' ? 'joined' : 'none'))(roles.get(r.user_id)),
+      attendance: att.get(r.id) ? { at: att.get(r.id)!.at, method: att.get(r.id)!.method } : null,
+      photo: (JSON.parse(r.consents_json) as { photo?: boolean }).photo === true,
       id: r.id, userId: r.user_id, nickname: r.nickname, region: r.sido || '', state: r.state, appliedOn: r.sim_date ?? day(r.created_at), companions: r.companions,
       startTotal: start.get(r.id) ?? null, endTotal: end.get(r.id) ?? null, recordCount: recs.get(r.id) ?? 0,
       reminderOn: answers.reminder?.enabled !== false, checklistDone: checklist, research,
@@ -157,6 +169,35 @@ export const adminExport: Handler = async (req, ctx, p) => {
   });
 };
 
+// ---- delivery list ------------------------------------------------------------
+
+/** 서명자를 의회별로 묶는다: 「{시군구}의회」, 시군구가 없으면 「{시도}의회」. */
+export const councilOf = (sido: string, sigungu: string) => (sigungu ? `${sigungu}의회` : sido ? `${sido}의회` : '지역 미입력');
+
+/** 전달용 명단 만들기: 활동명 · 지역 · 서명일만 담는다. 만든 기록은 활동 기록에 남는다. */
+export const adminDeliveryList: Handler = async (req, ctx, p) => {
+  const denied = requireAdmin(ctx);
+  if (denied) return denied;
+  const c = await loadCampaignRow(ctx, p.id);
+  if (!c || c.type !== 'signature') return fail(404, 'CAMPAIGN_NOT_FOUND', '서명 캠페인을 찾을 수 없어요');
+  const want = str((await readBody(req))?.council) || 'all';
+  const rows = (await partRows(ctx, c.id)).filter((r) => r.state === 'signed');
+  const groups = new Map<string, Array<{ nickname: string; region: string; signedOn: string }>>();
+  const meta = new Map((await ctx.db.all<{ id: string; sido: string; sigungu: string }>(
+    'SELECT p.id, u.sido, u.sigungu FROM participations p JOIN users u ON u.id = p.user_id WHERE p.campaign_id = ?', c.id)).map((x) => [x.id, x]));
+  for (const r of rows) {
+    const m = meta.get(r.id)!;
+    const name = councilOf(m.sido, m.sigungu);
+    if (want !== 'all' && want !== name) continue;
+    const l = groups.get(name) ?? [];
+    l.push({ nickname: r.nickname, region: [m.sido, m.sigungu].filter(Boolean).join(' '), signedOn: r.appliedOn });
+    groups.set(name, l);
+  }
+  const councils = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'ko')).map(([name, items]) => ({ name, count: items.length, items }));
+  await audit(ctx, 'delivery_list', 'campaign', c.id, { council: want, councils: councils.length, signers: councils.reduce((n, x) => n + x.count, 0) });
+  return json({ title: c.title, councils });
+};
+
 // ---- notice ------------------------------------------------------------------
 
 export const sendNotice: Handler = async (req, ctx, p) => {
@@ -214,7 +255,7 @@ export const adminReports: Handler = async (_req, ctx) => {
 export const resolveReport: Handler = async (req, ctx, p) => {
   const denied = requireAdmin(ctx);
   if (denied) return denied;
-  const r = await ctx.db.first<{ id: string; target_type: string; target_id: string; status: string }>('SELECT * FROM reports WHERE id = ?', p.id);
+  const r = await ctx.db.first<{ id: string; target_type: string; target_id: string; status: string; reporter_id: string | null }>('SELECT * FROM reports WHERE id = ?', p.id);
   if (!r) return fail(404, 'REPORT_NOT_FOUND', '신고를 찾을 수 없어요');
   const b = await readBody(req);
   const action = str(b?.action), reason = str(b?.reason);
@@ -232,6 +273,7 @@ export const resolveReport: Handler = async (req, ctx, p) => {
     }
   }
   await ctx.db.run('UPDATE reports SET status = ? WHERE id = ?', action === 'hide' ? 'hidden' : 'dismissed', r.id);
+  if (action === 'dismiss' && r.reporter_id) await notify(ctx.db, r.reporter_id, 'report_result', '신고를 확인했어요. 운영 원칙에 어긋나지 않아 그대로 두었어요', '/me', `report_result:${r.id}`, ctx.simDate);
   await audit(ctx, `report_${action}`, r.target_type, r.target_id, { reportId: r.id, reason });
   return json({ ok: true, status: action === 'hide' ? 'hidden' : 'dismissed' });
 };

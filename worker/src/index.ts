@@ -16,7 +16,7 @@ import { listNotifications, readNotifications, syncNotifications } from './route
 import { createCollab, draftFromCollab, listCollab, replyCollab } from './routes/collab';
 import { getDelivery, postDelivery, postDeliveryAnswer } from './routes/deliveries';
 import { addVersion, createTool, getPublished, listTools, myToolRecords, publishToolVersion, rollbackTool, saveToolRecord } from './routes/tools';
-import { adminCloseGroup, adminExport, adminGroups, adminHome, adminParticipants, adminReports, adminUsers, resolveReport, restrictUser, sendNotice } from './routes/admin';
+import { adminCloseGroup, adminDeliveryList, adminExport, adminGroups, adminHome, adminParticipants, adminReports, adminUsers, resolveReport, restrictUser, sendNotice } from './routes/admin';
 import { simExport, simReset } from './routes/simData';
 import { createUser, getMe, listUsers, patchMe } from './routes/users';
 import {
@@ -132,6 +132,7 @@ export const routes: Route[] = [
   { method: 'GET', pattern: '/api/admin/home', handler: adminHome },
   { method: 'GET', pattern: '/api/admin/campaigns/:id/participants', handler: adminParticipants },
   { method: 'GET', pattern: '/api/admin/campaigns/:id/export', handler: adminExport },
+  { method: 'POST', pattern: '/api/admin/campaigns/:id/delivery-list', handler: adminDeliveryList },
   { method: 'GET', pattern: '/api/admin/reports', handler: adminReports },
   { method: 'POST', pattern: '/api/admin/reports/:id', handler: resolveReport },
   { method: 'GET', pattern: '/api/admin/groups', handler: adminGroups },

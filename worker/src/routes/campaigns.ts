@@ -236,6 +236,16 @@ async function countsOf(ctx: Ctx, r: CampaignRow, settings: CampaignSettings) {
   return { participants: a.n, waitlisted: w.n, seatsTaken: taken, capacity, seatsLeft: capacity == null ? null : Math.max(0, capacity - taken), subscribers: sub.n };
 }
 
+/** 오프라인 지금 출석 인원(동반 포함). 신청이 확정된 참가자 · 운영진 · 관리자에게만 보인다. */
+async function attendedOf(ctx: Ctx, r: CampaignRow, applicant: boolean): Promise<{ attendedCount?: number }> {
+  if (r.type !== 'offline') return {};
+  const staff = isAdmin(ctx) || (!!r.host_group_id && isStaffRole(ctx, r.host_group_id, await memberRole(ctx, r.host_group_id, ctx.userId)));
+  if (!applicant && !staff) return {};
+  const a = await ctx.db.first<{ n: number }>(
+    "SELECT COALESCE(SUM(1 + p.companions), 0) n FROM attendance a JOIN participations p ON p.id = a.participation_id WHERE p.campaign_id = ? AND p.state = 'applied'", r.id);
+  return { attendedCount: a?.n ?? 0 };
+}
+
 export async function detail(ctx: Ctx, r: CampaignRow) {
   const st = statusOf(ctx, r);
   const settings = settingsOf(r);
@@ -259,7 +269,10 @@ export async function detail(ctx: Ctx, r: CampaignRow) {
     campaign: await campaignView(ctx, r, showExact),
     status: st,
     phase: st === 'draft' ? null : participantPhase(statusInput(r), ctx.simDate),
-    counts: await countsOf(ctx, r, settings),
+    counts: {
+      ...(await countsOf(ctx, r, settings)),
+      ...(await attendedOf(ctx, r, mine?.state === 'applied')),
+    },
     myParticipation: mine
       ? { id: mine.id, state: mine.state, companions: mine.companions, waitlistNo: mine.waitlist_no, consents: JSON.parse(mine.consents_json), answers: JSON.parse(mine.answers_json), createdAt: mine.created_at, simDate: mine.sim_date, transport: mine.transport, startMeasurementId: mine.start_measurement_id, pausedFrom: mine.paused_from, pausedUntil: mine.paused_until, pauseUsed: !!mine.pause_used, paused: !!mine.paused_from && !!mine.paused_until && ctx.simDate >= mine.paused_from && ctx.simDate <= mine.paused_until, ...sig }
       : null,
