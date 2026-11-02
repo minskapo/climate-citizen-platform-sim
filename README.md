@@ -44,11 +44,13 @@ npm test               # 단위 테스트 (vitest)
 npm run typecheck
 npm run build          # web/dist
 
-# 전체 흐름 점검 (배포된 Worker를 씀, 시작할 때 체험 데이터를 비움)
+# 전체 흐름 점검 (시작할 때 대상 Worker의 체험 데이터를 모두 지움)
 npx playwright install chromium
-SIM_PASSCODE=<입장 암호> npx playwright test
-QA_SHOTS=1 SIM_PASSCODE=<입장 암호> npx playwright test   # 화면 스크린샷도 test-results/qa/에 저장
+E2E_ALLOW_RESET=1 E2E_API_BASE=<지워도 되는 Worker 주소> SIM_PASSCODE=<입장 암호> npx playwright test
+QA_SHOTS=1 E2E_ALLOW_RESET=1 E2E_API_BASE=<…> SIM_PASSCODE=<입장 암호> npx playwright test   # 화면 스크린샷도 test-results/qa/에 저장
 ```
+
+- E2E는 시작할 때 `/api/sim/reset`으로 대상 Worker의 체험 데이터를 모두 지워요. `E2E_ALLOW_RESET=1`이 없으면 아무것도 지우지 않고 바로 중단해요. `E2E_API_BASE`를 주지 않으면 배포된 Worker를 쓰니, 실제 체험 중인 사이트에는 돌리지 마세요.
 
 - 웹은 `main`에 push하면 GitHub Actions(`.github/workflows/pages.yml`)가 테스트 후 GitHub Pages로 배포해요.
 - Worker는 `npx wrangler deploy --config worker/wrangler.toml`로 배포해요. 마이그레이션은 `npx wrangler d1 migrations apply climate-sim --remote --config worker/wrangler.toml`.

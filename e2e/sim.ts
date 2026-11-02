@@ -17,8 +17,17 @@ export async function enterToken(): Promise<string> {
   return ((await res.json()) as { token: string }).token;
 }
 
-/** 체험 데이터를 모두 지운다(관리자 역할 + 입장 암호). */
+export const RESET_REFUSED =
+  'E2E는 시작할 때 체험 데이터를 모두 지워요(/api/sim/reset). 정말 지워도 되는 Worker일 때만 E2E_ALLOW_RESET=1을 함께 주세요. 중단합니다.';
+
+/** E2E_ALLOW_RESET=1이 아니면 초기화를 거부한다(실수로 운영 중인 체험 사이트를 비우지 않도록). */
+export function assertResetAllowed(): void {
+  if (process.env.E2E_ALLOW_RESET !== '1') throw new Error(RESET_REFUSED);
+}
+
+/** 체험 데이터를 모두 지운다(관리자 역할 + 입장 암호). E2E_ALLOW_RESET=1일 때만. */
 export async function resetSim(): Promise<void> {
+  assertResetAllowed();
   const token = await enterToken();
   const res = await fetch(`${WORKER}/api/sim/reset`, {
     method: 'POST',

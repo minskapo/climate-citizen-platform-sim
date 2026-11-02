@@ -83,7 +83,8 @@ const SCREEN_CODE = /(?<![\w가-힣])(?:[A-CE-KMOS]-\d{1,2}[a-z]?|D-1p)(?![\w])/
  */
 export async function checkScreen(page: Page, name: string, opts: { admin?: boolean } = {}) {
   await page.waitForLoadState('networkidle').catch(() => undefined);
-  await expect(page.locator('main .spinner')).toHaveCount(0, { timeout: 15_000 }).catch(() => undefined);
+  // 기다린 뒤에도 불러오는 중 표시가 남아 있으면 화면 점검 실패(조용히 넘어가지 않음).
+  await expect(page.locator('main .spinner'), `불러오기 끝남: ${name}`).toHaveCount(0, { timeout: 15_000 });
   const text = await page.locator('body').innerText();
   const main = text.replace(/^[\s\S]*?체험 도구[\s\S]*?(?=기후시민플랫폼)/, '');
   if (!opts.admin) expect(main, `개발용 문구 없음: ${name}`).not.toMatch(DEV_PHRASES);
