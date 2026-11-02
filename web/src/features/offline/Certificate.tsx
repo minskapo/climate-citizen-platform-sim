@@ -23,7 +23,7 @@ export function Certificate() {
   const c = detail.campaign;
   const s = c.schedule;
   const o = offlineOf(detail);
-  const print = () => { window.print(); showToast('참여 확인서를 내려받았어요 (PDF)'); };
+  const print = () => { window.print(); showToast('인쇄 창을 열었어요'); };
   return (
     <div className="container page">
       <div className="coff-cert-bar no-print">

@@ -64,10 +64,20 @@ export function ClosedView({ detail, agg, reload }: { detail: CampaignDetail; ag
 
   const hostId = c.host.type === 'group' && c.host.id ? c.host.id : null;
   const [role, setRole] = useState<string | null | undefined>(undefined);
+  /** 가입 신청을 받을 수 있는 모임인지(비공개 · 닫힌 모임 · 내보낸 회원이면 버튼을 숨긴다) */
+  const [joinable, setJoinable] = useState(false);
   useEffect(() => {
-    if (!hostId || !sim.userId || sim.role === 'guest') { setRole(null); return; }
+    if (!hostId) { setRole(null); return; }
     let alive = true;
-    api<{ myRole: string | null }>(`/api/groups/${hostId}`, { quiet: true }).then((g) => alive && setRole(g.myRole)).catch(() => alive && setRole(null));
+    const signedIn = !!sim.userId && sim.role !== 'guest';
+    api<{ myRole: string | null; joinPolicy?: string; closed?: boolean }>(`/api/groups/${hostId}`, { quiet: true })
+      .then((g) => {
+        if (!alive) return;
+        const myRole = signedIn ? g.myRole : null;
+        setRole(myRole);
+        setJoinable(g.joinPolicy !== 'private' && !g.closed && myRole !== 'banned');
+      })
+      .catch(() => { if (alive) { setRole(null); setJoinable(false); } });
     return () => { alive = false; };
   }, [hostId, sim.userId, sim.role]);
   const inGroup = !!role && ['owner', 'staff', 'member'].includes(role);
@@ -107,7 +117,7 @@ export function ClosedView({ detail, agg, reload }: { detail: CampaignDetail; ag
           <p className="capply-note">서명이 마감됐어요. 주최 모임에 가입하면 다음 서명과 후속 활동 소식을 받아 볼 수 있어요.</p>
           {inGroup ? <p className="sig-note">주최 모임에 가입돼 있어요</p>
             : pending ? <p className="sig-note">주최 모임 가입 승인을 기다리고 있어요</p>
-              : role === undefined ? null
+              : role === undefined || !joinable ? null
                 : <Button size="lg" block disabled={busy} onClick={joinHost}>주최 모임 소식 받기</Button>}
         </>
       ) : (

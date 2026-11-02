@@ -68,7 +68,8 @@ describe('admin', () => {
     const res = await h.call('POST', `/api/admin/reports/${rr.id}`, { ...admin, body: { action: 'hide', reason: '광고성', notify: true } });
     expect(res.status).toBe(200);
     expect((await h.db.first<{ hidden: number }>('SELECT hidden FROM posts WHERE id = ?', post.id))!.hidden).toBe(1);
-    expect((await (await h.call('GET', '/api/notifications', as(owner))).json()).items.some((x: { kind: string }) => x.kind === 'report_hidden')).toBe(true);
+    const hiddenNote = (await (await h.call('GET', '/api/notifications', as(owner))).json()).items.find((x: { kind: string }) => x.kind === 'report_hidden');
+    expect(hiddenNote.text).toBe('운영 원칙(광고성)에 따라 글을 숨겼어요');
 
     expect((await h.call('POST', `/api/admin/users/${rep}/restrict`, { ...admin, body: { restricted: true } })).status).toBe(200);
     const blocked = await h.call('POST', `/api/boards/group/${gid}/posts`, { ...as(rep), body: { title: 't', body: 'b', category: '자유' } });

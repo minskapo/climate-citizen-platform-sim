@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { councilOf } from '@shared/text';
 import { addDays } from '@shared/date';
 import { Button, LoadError, Spinner } from '../../components/ui';
 import { useSim } from '../../lib/sim';
@@ -9,7 +10,7 @@ import { NoticeModal } from './NoticeModal';
 import { FilterTabs, n, PartHead, pct, regionText, StatCards, useParticipants, type Part } from './participantsCommon';
 
 /** 「{시군구}의회」, 시군구가 없으면 「{시도}의회」 */
-export const councilOf = (p: Pick<Part, 'region' | 'sigungu'>) => (p.sigungu ? `${p.sigungu}의회` : p.region ? `${p.region}의회` : '지역 미입력');
+const councilOfPart = (p: Pick<Part, 'region' | 'sigungu'>) => councilOf(p.region, p.sigungu);
 const JOIN: Record<Part['hostJoin'], string> = { joined: '가입됨', pending: '승인 대기', none: '신청 안 함' };
 
 /** M-1s 서명자 관리 */
@@ -44,7 +45,7 @@ export function SignersPage({ id }: { id: string }) {
   const thisWeek = signers.filter((r) => r.appliedOn >= weekAgo && r.appliedOn <= sim.today).length;
   const hostReq = signers.filter((r) => r.hostJoin !== 'none').length;
   const pending = signers.filter((r) => r.hostJoin === 'pending').length;
-  const councils = [...signers.reduce((m, r) => m.set(councilOf(r), (m.get(councilOf(r)) ?? 0) + 1), new Map<string, number>()).entries()].sort(([a], [b]) => a.localeCompare(b, 'ko'));
+  const councils = [...signers.reduce((m, r) => m.set(councilOfPart(r), (m.get(councilOfPart(r)) ?? 0) + 1), new Map<string, number>()).entries()].sort(([a], [b]) => a.localeCompare(b, 'ko'));
 
   return (
     <div>
@@ -80,7 +81,7 @@ export function SignersPage({ id }: { id: string }) {
                 <td className="adm-strong">{r.nickname}</td>
                 <td>{regionText(r) || '–'}</td>
                 <td>{md(r.appliedOn)}</td>
-                <td>{councilOf(r)}</td>
+                <td>{councilOfPart(r)}</td>
                 <td>{JOIN[r.hostJoin]}</td>
                 <td>{n(r.sharedCount)}명</td>
                 <td>{r.research ? '동의' : '–'}</td>

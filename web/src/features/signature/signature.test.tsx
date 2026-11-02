@@ -9,6 +9,7 @@ import { __reloadSimForTest, simStore } from '../../lib/sim';
 let detail: Record<string, unknown> = {};
 let agg: Record<string, unknown> = {};
 let delivery: Record<string, unknown> = { delivery: null };
+let hostGroup: Record<string, unknown> = {};
 const calls: Array<{ path: string; opts?: { method?: string; body?: Record<string, unknown> } }> = [];
 vi.mock('../../lib/api', () => ({
   ApiError: class extends Error { status = 0; },
@@ -24,7 +25,7 @@ vi.mock('../../lib/api', () => ({
     if (path === '/api/me') return { nickname: '햇빛부자', sido: '강원', sigungu: '원주시' };
     if (path.startsWith('/api/me/measurements')) return { items: [] };
     if (path.startsWith('/api/posts/')) return { items: [] };
-    if (path.startsWith('/api/groups')) return { id: 'g1', name: '기후정책 아카데미 동문 모임', sido: '', joinPolicy: 'approval', memberCount: 58, myRole: null };
+    if (path.startsWith('/api/groups')) return { id: 'g1', name: '기후정책 아카데미 동문 모임', sido: '', joinPolicy: 'approval', memberCount: 58, myRole: null, ...hostGroup };
     return {};
   }),
 }));
@@ -65,6 +66,7 @@ beforeEach(() => {
   detail = makeDetail();
   agg = { count: 1047, byRegion: [{ name: '서울 마포구', n: 212 }, { name: '강원 원주시', n: 98 }], other: { regions: 41, n: 424 } };
   delivery = { delivery: null };
+  hostGroup = {};
 });
 
 describe('signature campaign', () => {
@@ -167,6 +169,23 @@ describe('signature campaign', () => {
     fireEvent.click(await screen.findByRole('button', { name: '주최 모임 소식 받기' }));
     await waitFor(() => expect(calls.some((c) => c.path === '/api/groups/g1/join' && c.opts?.method === 'POST')).toBe(true));
     expect(screen.queryByRole('button', { name: '다음 서명 알림 받기' })).toBeNull();
+  });
+
+  test('closed view hides the join button for a private host group', async () => {
+    hostGroup = { joinPolicy: 'private' };
+    open('2027-03-20');
+    expect(await screen.findByText(/주최 모임에 가입하면/)).toBeTruthy();
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/groups/g1')).toBe(true));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole('button', { name: '주최 모임 소식 받기' })).toBeNull();
+  });
+
+  test('closed view hides the join button for a banned member', async () => {
+    hostGroup = { myRole: 'banned' };
+    open('2027-03-20');
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/groups/g1')).toBe(true));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole('button', { name: '주최 모임 소식 받기' })).toBeNull();
   });
 
   test('closed view without host group hides the button', async () => {

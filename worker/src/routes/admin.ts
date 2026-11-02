@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { councilOf, hiddenNoticeText } from '@shared/text';
 import type { PracticeSettings } from '../campaignSettings';
 import { fail, json, type Ctx, type Handler } from '../db';
 import { notify } from '../notify';
@@ -172,7 +173,6 @@ export const adminExport: Handler = async (req, ctx, p) => {
 // ---- delivery list ------------------------------------------------------------
 
 /** 서명자를 의회별로 묶는다: 「{시군구}의회」, 시군구가 없으면 「{시도}의회」. */
-export const councilOf = (sido: string, sigungu: string) => (sigungu ? `${sigungu}의회` : sido ? `${sido}의회` : '지역 미입력');
 
 /** 전달용 명단 만들기: 활동명 · 지역 · 서명일만 담는다. 만든 기록은 활동 기록에 남는다. */
 export const adminDeliveryList: Handler = async (req, ctx, p) => {
@@ -268,7 +268,7 @@ export const resolveReport: Handler = async (req, ctx, p) => {
       await ctx.db.run(`UPDATE ${t} SET hidden = 1 WHERE id = ?`, r.target_id);
       if (b?.notify === true) {
         const a = await ctx.db.first<{ author_id: string }>(`SELECT author_id FROM ${t} WHERE id = ?`, r.target_id);
-        if (a) await notify(ctx.db, a.author_id, 'report_hidden', `신고가 접수되어 글이 숨겨졌어요 · ${reason}`, '/me', `report_hidden:${r.id}`, ctx.simDate);
+        if (a) await notify(ctx.db, a.author_id, 'report_hidden', hiddenNoticeText(reason), '/me', `report_hidden:${r.id}`, ctx.simDate);
       }
     }
   }

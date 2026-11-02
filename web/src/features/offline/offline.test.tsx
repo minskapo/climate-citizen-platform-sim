@@ -159,4 +159,10 @@ describe('offline campaign', () => {
     expect(ics).toContain('DTEND;TZID=Asia/Seoul:20270125T160000');
     expect(ics).toContain('LOCATION:마포구 성산동');
   });
+
+  test('calendar file escapes semicolons and commas', () => {
+    const d = makeDetail() as { campaign: { title: string } };
+    d.campaign.title = '탐방; 1회, 2회';
+    expect(buildIcs(d as never, '2027-01-19')).toContain('SUMMARY:탐방\\; 1회\\, 2회');
+  });
 });

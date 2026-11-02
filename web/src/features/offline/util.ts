@@ -65,7 +65,7 @@ export function canCancelNow(s: CampaignSchedule, today: ISODate, now: string): 
   return !s.recruitEndTime || now < s.recruitEndTime;
 }
 
-const icsEscape = (t: string) => t.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const icsEscape = (t: string) => t.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const icsDate = (d: string, t: string) => `${d.replace(/-/g, '')}T${t.replace(':', '')}00`;
 
 export function buildIcs(detail: CampaignDetail, today: ISODate): string {

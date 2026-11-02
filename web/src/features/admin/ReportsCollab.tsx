@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { hiddenNoticeText } from '@shared/text';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/Modal';
 import { Button, Chip, LoadError, Spinner } from '../../components/ui';
@@ -195,7 +196,7 @@ function HideModal({ report, onClose, onDone }: { report: Report; onClose(): voi
           </div>
         </div>
         <label className="adm-radio"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
-          <span><b>작성자에게 알리기</b><small>「운영 원칙({reason})에 따라 글을 숨겼어요」라고 알림이 가요.</small></span></label>
+          <span><b>작성자에게 알리기</b><small>「{hiddenNoticeText(reason)}」라고 알림이 가요.</small></span></label>
         {err && <p className="field-error" role="alert">{err}</p>}
       </div>
     </Modal>
