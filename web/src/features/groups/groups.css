@@ -22,6 +22,7 @@
 .gpop-main { display: grid; gap: 4px; min-width: 0; }
 .gpop-main strong { font-size: var(--fs-15); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gpop-main small { color: var(--c-text-faint); }
+.gpop-excerpt { font-size: var(--fs-14); color: var(--c-text-sub); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; }
 .gpop-tags { display: flex; gap: 6px; }
 .gpop-group, .gpop-cat { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--c-green-tint); color: var(--c-green); }
 .gpop-cat { background: var(--c-surface-2); color: var(--c-text-sub); }

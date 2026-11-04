@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { Button, EmptyState, Spinner } from '../../components/ui';
+import { excerptOf } from '../home/PopularPosts';
 import { GroupCard } from './GroupCard';
 import { POLICY_LABEL_LONG, type GroupView, type JoinPolicy } from './types';
 import './groups.css';
 
-interface Popular { id: string; boardId: string; title: string; category: string; groupName: string; author: string; commentCount: number; likeCount: number; simDate: string | null }
+interface Popular { id: string; boardId: string; title: string; category: string; groupName: string; author: string; excerpt?: string; commentCount: number; likeCount: number; simDate: string | null }
 const SIDO = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const SHOWN = 9;
 
@@ -92,6 +93,7 @@ export function GroupListPage() {
                       <span className="gpop-main">
                         <span className="gpop-tags"><span className="gpop-group">{p.groupName}</span>{p.category && <span className="gpop-cat">{p.category}</span>}</span>
                         <strong>{p.title}</strong>
+                        {excerptOf(p.excerpt) && <span className="gpop-excerpt">{excerptOf(p.excerpt)}</span>}
                         <small>{p.author} · 댓글 {p.commentCount} · 공감 {p.likeCount}</small>
                       </span>
                     </Link>

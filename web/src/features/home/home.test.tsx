@@ -28,17 +28,19 @@ vi.mock('../../lib/api', () => ({
     if (path === '/api/me/measurements') return { items: measurements };
     if (path.startsWith('/api/participations/') && path.endsWith('/records')) return { records: [], slots: [], pausedDates: [], backfillable: [], nextSlot: null, isSlotToday: true, progress: { done: 12, total: 28, dueSoFar: 12, streak: 5 }, missedStreak: 0 };
     if (path.startsWith('/api/campaigns')) return { items: [], nextCursor: null };
-    if (path.startsWith('/api/popular')) return { items: [] };
+    if (path.startsWith('/api/popular')) return { items: popularItems };
     if (path.startsWith('/api/groups')) return { items: [], nextCursor: null };
     return {};
   }),
 }));
 
+let popularItems: unknown[] = [];
 const open = () => render(<MemoryRouter><HomePage /></MemoryRouter>);
 
 beforeEach(() => {
   localStorage.clear();
   __reloadSimForTest();
+  popularItems = [];
   hero = null; agg = { count: 15234, avg: null, policyCounts: {} }; myParts = []; measurements = [];
   simStore.set({ fixedDate: '2027-02-10', dateOffsetDays: 0, pendingMeasurementIds: [] });
 });
@@ -46,6 +48,12 @@ beforeEach(() => {
 const scrollTo = (y: number) => act(() => { Object.defineProperty(window, 'scrollY', { value: y, configurable: true }); window.dispatchEvent(new Event('scroll')); });
 
 describe('home', () => {
+  test('popular posts show a body excerpt under the title', async () => {
+    popularItems = [{ id: 'p1', boardId: 'g1', title: '원주천 플로깅 후기', category: '후기', groupName: '원주 모임', author: '초록걸음', excerpt: '토요일 아침\n원주천에서   쓰레기 한 봉지를 주웠어요.', commentCount: 3, likeCount: 2, simDate: '2027-01-18' }];
+    open();
+    expect(await screen.findByText('토요일 아침 원주천에서 쓰레기 한 봉지를 주웠어요.')).toHaveClass('hpop-excerpt');
+  });
+
   test('guest hero shows hero campaign or intro when none', async () => {
     hero = campaignDetail();
     const { unmount } = open();

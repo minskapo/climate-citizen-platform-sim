@@ -97,6 +97,8 @@ describe('posts', () => {
     const r = await (await h.call('GET', '/api/popular?days=7&limit=6', as(pub.m))).json();
     expect(r.items.map((i: { title: string }) => i.title)).toEqual(['인기', '조용']);
     expect(r.items[0].score).toBe(3);
+    expect(r.items[0].excerpt).toBe('내용');
+    expect(JSON.stringify(r)).not.toContain('비공개글');
     await h.call('POST', `/api/posts/${a.id}/like`, as(pub.m));
     expect((await (await h.call('GET', '/api/popular', as(pub.m))).json()).items[0].likeCount).toBe(1);
   });

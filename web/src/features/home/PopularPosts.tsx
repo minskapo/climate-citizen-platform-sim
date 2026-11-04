@@ -6,8 +6,11 @@ import { Chip, EmptyState, Spinner } from '../../components/ui';
 
 export interface Popular {
   id: string; boardId: string; title: string; category: string; groupName: string; author: string;
-  commentCount: number; likeCount: number; simDate: string | null; createdAt?: string;
+  excerpt?: string; commentCount: number; likeCount: number; simDate: string | null; createdAt?: string;
 }
+
+/** 본문 앞부분을 한 줄 공백으로 줄여 80자까지 */
+export const excerptOf = (s?: string) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
 
 /** 모임 인기 게시물: 공개 모임 글 중 이번 주 많이 읽고 댓글이 오간 6개 */
 export function PopularPosts() {
@@ -39,6 +42,7 @@ export function PopularPosts() {
                     <span className="hpop-body">
                       <span className="hpop-tags"><Chip tone="green">{p.groupName}</Chip>{p.category && <Chip tone="blue">{p.category}</Chip>}</span>
                       <b className="hpop-title">{p.title}</b>
+                      {excerptOf(p.excerpt) && <span className="hpop-excerpt">{excerptOf(p.excerpt)}</span>}
                       <span className="hpop-meta">{[p.author, d && koShort(d).replace(/\(.\)$/, ''), `댓글 ${p.commentCount}`, `공감 ${p.likeCount}`].filter(Boolean).join(' · ')}</span>
                     </span>
                   </Link>
