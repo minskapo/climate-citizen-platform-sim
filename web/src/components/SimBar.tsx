@@ -75,7 +75,7 @@ export function SimBar() {
     }
   };
 
-  const dateChanged = sim.today !== sim.realToday;
+  const dateChanged = sim.today !== sim.baseDate;
 
   return (
     <div className={`simbar${open ? ' is-open' : ''}`} role="region" aria-label="체험 도구">
@@ -126,7 +126,7 @@ export function SimBar() {
             <button type="button" className="simbar-btn" onClick={() => sim.shiftDays(-1)}>−1</button>
             <button type="button" className="simbar-btn" onClick={() => sim.shiftDays(1)}>+1</button>
             <button type="button" className="simbar-btn" onClick={() => sim.shiftDays(7)}>+7</button>
-            <button type="button" className="simbar-btn" disabled={!dateChanged && sim.fixedDate === null} onClick={() => sim.setDate(null)}>오늘로</button>
+            <button type="button" className="simbar-btn" disabled={!dateChanged && sim.fixedDate === null} onClick={() => sim.setDate(null)} title="체험 기준일(2027. 1. 19.)로 돌아가요">기준일로</button>
           </div>
 
           <div className="simbar-item">

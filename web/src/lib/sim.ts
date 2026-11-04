@@ -1,6 +1,6 @@
 import { useSyncExternalStore, useEffect, useState } from 'react';
 import type { HHMM, ISODate, Role } from '@shared/types';
-import { addDays, todayReal } from '@shared/date';
+import { addDays, SIM_BASE_DATE, todayReal } from '@shared/date';
 
 /** 브라우저별 체험 상태. 역할 · 활동명 · 내 날짜는 이 브라우저에만 적용된다. */
 export interface SimState {
@@ -103,7 +103,7 @@ export function realTime(): HHMM {
 }
 
 export function simToday(s: SimState = state): ISODate {
-  return addDays(s.fixedDate ?? todayReal(), s.dateOffsetDays);
+  return addDays(s.fixedDate ?? SIM_BASE_DATE, s.dateOffsetDays);
 }
 
 export function simNowTime(s: SimState = state): HHMM {
@@ -114,7 +114,7 @@ const actions = {
   setRole(r: Role) {
     simStore.set({ role: r, staffGroupId: r === 'staff' ? state.staffGroupId : null });
   },
-  /** 날짜를 고른다. null이면 「오늘로」. */
+  /** 날짜를 고른다. null이면 「기준일로」(SIM_BASE_DATE). */
   setDate(d: ISODate | null) {
     simStore.set({ fixedDate: d, dateOffsetDays: 0 });
   },
@@ -142,9 +142,9 @@ const actions = {
   },
 };
 
-export type Sim = SimState & typeof actions & { today: ISODate; nowTime: HHMM; realToday: ISODate };
+export type Sim = SimState & typeof actions & { today: ISODate; nowTime: HHMM; baseDate: ISODate; realToday: ISODate };
 
-/** 실제 시계가 분 단위로 넘어갈 때 다시 그리게 한다(시각을 고정하지 않았을 때). */
+/** 실제 시계가 분 단위로 넘어갈 때 다시 그리게 한다(시각을 고정하지 않았을 때). 날짜는 기준일 고정이라 시계와 무관해요. */
 function useMinuteTick(enabled: boolean) {
   const [, setN] = useState(0);
   useEffect(() => {
@@ -156,6 +156,6 @@ function useMinuteTick(enabled: boolean) {
 
 export function useSim(): Sim {
   const s = useSyncExternalStore(simStore.subscribe, simStore.get, simStore.get);
-  useMinuteTick(s.timeOverride === null || s.fixedDate === null);
-  return { ...s, ...actions, today: simToday(s), nowTime: simNowTime(s), realToday: todayReal() };
+  useMinuteTick(s.timeOverride === null);
+  return { ...s, ...actions, today: simToday(s), nowTime: simNowTime(s), baseDate: SIM_BASE_DATE, realToday: todayReal() };
 }

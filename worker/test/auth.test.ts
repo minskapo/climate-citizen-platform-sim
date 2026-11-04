@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { issueToken, verifyToken } from '../src/auth';
+import { SIM_BASE_DATE } from '@shared/date';
+import { buildCtx, issueToken, verifyToken } from '../src/auth';
 import { harness } from './helpers/client';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -74,6 +75,14 @@ describe('auth', () => {
       headers: { 'X-Sim-Date': '2026-11-02', 'X-Sim-Time': '09:30', 'X-Role': 'staff' },
     });
     expect(ok.status).toBe(200);
+  });
+
+  test('missing X-Sim-Date falls back to the sim base date', () => {
+    const ctx = buildCtx(new Request('https://w.test/api/users'), {} as never);
+    expect(ctx).not.toBeInstanceOf(Response);
+    expect((ctx as { simDate: string }).simDate).toBe(SIM_BASE_DATE);
+    const fixed = buildCtx(new Request('https://w.test/api/users', { headers: { 'X-Sim-Date': '2027-03-01' } }), {} as never);
+    expect((fixed as { simDate: string }).simDate).toBe('2027-03-01');
   });
 
   test('CORS only for allowed origins', async () => {

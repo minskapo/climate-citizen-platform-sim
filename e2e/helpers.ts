@@ -1,12 +1,10 @@
 import { expect, type Page } from '@playwright/test';
+import { addDays, SIM_BASE_DATE } from '../shared/src/date';
 import { passcode } from './sim';
 
-/** 서울 기준 오늘 + n일 (YYYY-MM-DD) */
-export function seoulDate(plusDays = 0): string {
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
-  const d = new Date(`${today}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + plusDays);
-  return d.toISOString().slice(0, 10);
+/** 체험 기준일(내 날짜 기본값) + n일 (YYYY-MM-DD) */
+export function baseDate(plusDays = 0): string {
+  return addDays(SIM_BASE_DATE, plusDays);
 }
 
 export const isMobile = (page: Page) => (page.viewportSize()?.width ?? 1440) < 768;

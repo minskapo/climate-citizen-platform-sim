@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
+import { SIM_BASE_DATE } from '@shared/date';
 import { __reloadSimForTest, useSim, SIM_KEY } from './sim';
 
 beforeEach(() => {
@@ -22,9 +23,10 @@ describe('useSim', () => {
     expect(result.current.dateOffsetDays).toBe(0);
   });
 
-  test('오늘로 returns to the real date', () => {
+  test('defaults to the base date; 기준일로 returns to it', () => {
     const { result } = renderHook(() => useSim());
-    const real = result.current.today;
+    expect(result.current.today).toBe(SIM_BASE_DATE);
+    const real = SIM_BASE_DATE;
     act(() => result.current.setDate('2027-02-08'));
     act(() => result.current.shiftDays(7));
     act(() => result.current.setDate(null));

@@ -1,5 +1,5 @@
 import type { HHMM, ISODate, Role } from '@shared/types';
-import { todayReal } from '@shared/date';
+import { SIM_BASE_DATE } from '@shared/date';
 import { fail, type Ctx, type Db } from './db';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -71,7 +71,7 @@ export function buildCtx(req: Request, db: Db, secret = ''): Ctx | Response {
 
   const rawDate = h.get('X-Sim-Date');
   if (rawDate !== null && !isRealDate(rawDate)) return fail(400, 'BAD_SIM_DATE', 'X-Sim-Date 형식이 올바르지 않아요');
-  const simDate: ISODate = rawDate ?? todayReal();
+  const simDate: ISODate = rawDate ?? SIM_BASE_DATE;
 
   const rawTime = h.get('X-Sim-Time');
   if (rawTime !== null) {

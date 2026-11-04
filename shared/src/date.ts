@@ -1,5 +1,11 @@
 import type { ISODate } from './types';
 
+/**
+ * 체험의 기준일. 내 날짜를 고르지 않은 사람의 「오늘」이고(웹), X-Sim-Date 헤더가 없을 때 Worker가 쓰는 날짜예요.
+ * 시안(Figma)의 예시 데이터가 이 날을 기준으로 맞춰져 있어요.
+ */
+export const SIM_BASE_DATE: ISODate = '2027-01-19';
+
 const DAY_MS = 86_400_000;
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 

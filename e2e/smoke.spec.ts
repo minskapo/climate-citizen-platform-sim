@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { checkScreen, enter, expectNoHorizontalScroll, isMobile, runCalculator, seoulDate, setRole, setSimDate, signup } from './helpers';
+import { checkScreen, enter, expectNoHorizontalScroll, isMobile, runCalculator, baseDate, setRole, setSimDate, signup } from './helpers';
 
 const RUN = Date.now().toString(36).slice(-5);
 
@@ -28,11 +28,11 @@ test('관리자 · 회원 두 사람이 캠페인 하나를 끝까지 쓴다', a
   await checkScreen(A, 'M-2', { admin: true });
   await A.getByLabel('캠페인 이름').fill(practiceTitle);
   await A.getByLabel('설명').fill('4주 동안 매주 바뀌는 미션을 매일 기록해요.');
-  await A.getByLabel('모집 시작 날짜').fill(seoulDate(0));
+  await A.getByLabel('모집 시작 날짜').fill(baseDate(0));
   await A.getByLabel('모집 시작 시각').fill('00:00');
-  await A.getByLabel('모집 마감 날짜').fill(seoulDate(6));
+  await A.getByLabel('모집 마감 날짜').fill(baseDate(6));
   await A.getByLabel('모집 마감 시각').fill('23:59');
-  await A.getByLabel('진행 시작 날짜').fill(seoulDate(7));
+  await A.getByLabel('진행 시작 날짜').fill(baseDate(7));
   await A.getByLabel('진행 기간').fill('28');
   await A.getByRole('group', { name: '미션 주기' }).getByRole('button', { name: '주마다 바뀜' }).click();
   await A.getByRole('group', { name: '기록 주기' }).getByRole('button', { name: '매일' }).click();
@@ -79,7 +79,7 @@ test('관리자 · 회원 두 사람이 캠페인 하나를 끝까지 쓴다', a
   if (mobile) await expectNoHorizontalScroll(B, 'K-5');
 
   // 3. B: 내 날짜를 진행 13일째로 → 「이번 주 미션」 기록 → 참가자 게시판 인증
-  const day13 = seoulDate(7 + 12);
+  const day13 = baseDate(7 + 12);
   await setSimDate(B, day13);
   await B.goto('./#/campaigns');
   await B.getByRole('link', { name: new RegExp(practiceTitle) }).first().click();
@@ -112,9 +112,9 @@ test('관리자 · 회원 두 사람이 캠페인 하나를 끝까지 쓴다', a
   await A.goto('./#/admin/campaigns/new?type=signature');
   await A.getByLabel('캠페인 이름').fill(sigTitle);
   await A.getByLabel('설명').fill('우리 동네 기후 예산을 늘려 달라고 요구해요.');
-  await A.getByLabel('서명 시작 날짜').fill(seoulDate(0));
+  await A.getByLabel('서명 시작 날짜').fill(baseDate(0));
   await A.getByLabel('서명 시작 시각').fill('00:00');
-  await A.getByLabel('서명 마감 날짜').fill(seoulDate(30));
+  await A.getByLabel('서명 마감 날짜').fill(baseDate(30));
   await A.getByLabel('서명 마감 시각').fill('23:59');
   await A.getByLabel('요구안 요약').fill('기후 대응 예산을 늘려 주세요.');
   await A.getByRole('group', { name: '공개 방식' }).getByRole('button', { name: '바로 공개' }).click();
@@ -124,11 +124,11 @@ test('관리자 · 회원 두 사람이 캠페인 하나를 끝까지 쓴다', a
   await A.goto('./#/admin/campaigns/new?type=offline');
   await A.getByLabel('캠페인 이름').fill(offTitle);
   await A.getByLabel('설명').fill('동네 옥상 태양광을 함께 둘러봐요.');
-  await A.getByLabel('모집 시작 날짜').fill(seoulDate(0));
+  await A.getByLabel('모집 시작 날짜').fill(baseDate(0));
   await A.getByLabel('모집 시작 시각').fill('00:00');
-  await A.getByLabel('모집 마감 날짜').fill(seoulDate(10));
+  await A.getByLabel('모집 마감 날짜').fill(baseDate(10));
   await A.getByLabel('모집 마감 시각').fill('23:59');
-  await A.getByLabel('모임 날짜 날짜').fill(seoulDate(12));
+  await A.getByLabel('모임 날짜 날짜').fill(baseDate(12));
   await A.getByLabel('시작 시각', { exact: true }).fill('14:00');
   await A.getByLabel('끝나는 시각').fill('16:00');
   await A.getByLabel('정확한 주소').fill('서울 마포구 성산로 1');
@@ -145,7 +145,7 @@ test('관리자 · 회원 두 사람이 캠페인 하나를 끝까지 쓴다', a
   const sigId = await idOf(sigTitle);
   const offId = await idOf(offTitle);
 
-  await setSimDate(B, seoulDate(0));
+  await setSimDate(B, baseDate(0));
   await B.goto(`./#/campaigns/${sigId}`);
   await checkScreen(B, 'S');
   await B.getByRole('button', { name: '서명하기' }).first().click();
